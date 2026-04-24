@@ -3,10 +3,10 @@ package com.devilsvault.api.transfer;
 import com.devilsvault.api.account.Account;
 import com.devilsvault.api.account.AccountRepository;
 import java.math.BigDecimal;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 @Service
 public class TransferService {
@@ -24,6 +24,16 @@ public class TransferService {
         if (req.sourceAccountId().equals(req.targetAccountId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source and target accounts must differ");
         }
+
+        // Acquire row locks in a deterministic order (lowest id first) to avoid deadlocks
+        // when two users transfer in opposite directions simultaneously.
+        long firstId = Math.min(req.sourceAccountId(), req.targetAccountId());
+        long secondId = Math.max(req.sourceAccountId(), req.targetAccountId());
+        accounts.findByIdForUpdate(firstId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
+        accounts.findByIdForUpdate(secondId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
+
         Account source = accounts.findById(req.sourceAccountId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Source account not found"));
         Account target = accounts.findById(req.targetAccountId())

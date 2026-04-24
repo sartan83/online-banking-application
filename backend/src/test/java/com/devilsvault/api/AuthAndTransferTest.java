@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import com.devilsvault.api.account.Account;
 import com.devilsvault.api.account.AccountRepository;
@@ -83,6 +84,7 @@ class AuthAndTransferTest {
                 "amount", "125.50",
                 "description", "rent"));
         MvcResult tr = mvc.perform(post("/api/transfers")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content(transferBody))
                 .andExpect(status().isOk())

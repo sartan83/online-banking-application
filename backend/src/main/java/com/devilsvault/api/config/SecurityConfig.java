@@ -11,6 +11,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -28,9 +30,19 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
+        CookieCsrfTokenRepository tokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        CsrfTokenRequestAttributeHandler csrfHandler = new CsrfTokenRequestAttributeHandler();
+        // null disables deferred loading so the XSRF-TOKEN cookie is issued on every response
+        csrfHandler.setCsrfRequestAttributeName(null);
+
         http
                 .cors(cors -> cors.configurationSource(corsSource()))
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(tokenRepository)
+                        .csrfTokenRequestHandler(csrfHandler)
+                        .ignoringRequestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/login"))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**",
@@ -49,6 +61,7 @@ public class SecurityConfig {
         cfg.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
+        cfg.setExposedHeaders(List.of("X-XSRF-TOKEN"));
         cfg.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
         src.registerCorsConfiguration("/**", cfg);
