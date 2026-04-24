@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter
+        xmlns="https://github.com/spotbugs/filter/3.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/3.1.0/spotbugs/etc/findbugsfilter.xsd">
+
+    <!-- JPA entities & DTOs use a no-arg ctor + setters; Lombok-style "EI/EI2" warnings about
+         exposing internal mutable state are noise for these patterns. -->
+    <Match>
+        <Or>
+            <Bug pattern="EI_EXPOSE_REP"/>
+            <Bug pattern="EI_EXPOSE_REP2"/>
+        </Or>
+        <Or>
+            <Class name="~com\.devilsvault\.api\..*\.(Account|User|Transfer|.*Request|.*Response|.*Dto)"/>
+            <Package name="~com\.devilsvault\.api\..*"/>
+        </Or>
+    </Match>
+
+    <!-- Spring/Hibernate frequently triggers serialVersionUID warnings on entities and configs;
+         these classes are not intended to be Java-serialized. -->
+    <Match>
+        <Bug pattern="SE_NO_SERIALVERSIONID"/>
+    </Match>
+
+    <!-- Records intentionally expose components; SpotBugs flags them otherwise. -->
+    <Match>
+        <Source name="~.*\.java"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+</FindBugsFilter>

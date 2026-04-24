@@ -30,7 +30,7 @@ export default function DashboardPage() {
         <h2 className="text-lg font-semibold">Your accounts</h2>
         {isLoading && <p>Loading…</p>}
         {error && <p className="text-red-600">Failed to load accounts.</p>}
-        {data && data.length === 0 && <p className="text-slate-600">No accounts yet.</p>}
+        {data?.length === 0 && <p className="text-slate-600">No accounts yet.</p>}
         <ul className="grid gap-3 md:grid-cols-2">
           {data?.map((a) => (
             <li key={a.id} className="bg-white rounded-lg shadow p-4 flex items-center justify-between">

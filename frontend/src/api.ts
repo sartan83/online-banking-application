@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 export const api = axios.create({
   baseURL: "/api",
@@ -31,15 +31,15 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (r) => r,
-  (err) => {
-    if (err.response?.status === 401) {
+  (err: unknown) => {
+    if (err instanceof AxiosError && err.response?.status === 401) {
       localStorage.removeItem("token");
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
       }
     }
-    return Promise.reject(err);
-  }
+    return Promise.reject(err instanceof Error ? err : new Error(String(err)));
+  },
 );
 
 export interface Account {

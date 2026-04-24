@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<ruleset name="DevilsVault PMD"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0
+                             https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+    <description>
+        Focused PMD ruleset: errorprone, security, multithreading, and performance categories.
+        Cosmetic and style rules (codestyle, documentation) are intentionally excluded — Checkstyle
+        owns those. Best-practices rules are included with the noisier ones excluded.
+    </description>
+
+    <rule ref="category/java/errorprone.xml">
+        <!-- Spring auto-wires beans through public constructors / setters; PMD sees missing static
+             initializers etc. that don't apply to managed beans. -->
+        <exclude name="BeanMembersShouldSerialize"/>
+        <exclude name="DataflowAnomalyAnalysis"/>
+        <!-- Records, value objects, and request bodies legitimately do not implement equals/hashCode. -->
+        <exclude name="MissingSerialVersionUID"/>
+        <!-- Fires on entity setters that match field names. -->
+        <exclude name="AvoidFieldNameMatchingMethodName"/>
+        <!-- We use SLF4J via Spring Boot; PMD's logger naming check is too strict. -->
+        <exclude name="ProperLogger"/>
+    </rule>
+
+    <rule ref="category/java/security.xml"/>
+
+    <rule ref="category/java/multithreading.xml">
+        <exclude name="DoNotUseThreads"/>
+        <exclude name="UseConcurrentHashMap"/>
+    </rule>
+
+    <rule ref="category/java/performance.xml">
+        <exclude name="AvoidInstantiatingObjectsInLoops"/>
+    </rule>
+
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="JUnitTestContainsTooManyAsserts"/>
+        <exclude name="GuardLogStatement"/>
+        <exclude name="UnitTestContainsTooManyAsserts"/>
+        <exclude name="UnitTestShouldIncludeAssert"/>
+        <exclude name="JUnitAssertionsShouldIncludeMessage"/>
+        <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
+        <!-- @Autowired + final fields w/ ctor injection legitimately have no public getters. -->
+        <exclude name="AccessorClassGeneration"/>
+    </rule>
+</ruleset>

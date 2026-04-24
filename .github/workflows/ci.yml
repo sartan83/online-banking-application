@@ -36,7 +36,47 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm run build
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+
+  sonar:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    needs: backend
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Sonar needs full history for blame/new-code analysis
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      - name: Build, test and analyze
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "${SONAR_TOKEN}" ]; then
+            echo "SONAR_TOKEN not configured — skipping SonarCloud analysis."
+            echo "Set repo secret SONAR_TOKEN at https://github.com/sartan83/online-banking-application/settings/secrets/actions to enable."
+            exit 0
+          fi
+          mvn -B -ntp verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=sartan83_online-banking-application \
+            -Dsonar.organization=sartan83 \
+            -Dsonar.host.url=https://sonarcloud.io
 
   codeql:
     name: CodeQL

@@ -23,7 +23,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <form onSubmit={onSubmit} className="bg-white p-8 rounded-lg shadow w-full max-w-sm space-y-4">
+      <form
+        onSubmit={(e) => {
+          void onSubmit(e);
+        }}
+        className="bg-white p-8 rounded-lg shadow w-full max-w-sm space-y-4"
+      >
         <h1 className="text-2xl font-semibold">Sign in</h1>
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <label className="block text-sm">
@@ -31,7 +36,9 @@ export default function LoginPage() {
           <input
             className="mt-1 block w-full border rounded px-3 py-2"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => {
+              setUsername(e.target.value);
+            }}
             required
           />
         </label>
@@ -41,7 +48,9 @@ export default function LoginPage() {
             type="password"
             className="mt-1 block w-full border rounded px-3 py-2"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+            }}
             required
           />
         </label>
