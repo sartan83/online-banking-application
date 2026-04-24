@@ -62,11 +62,18 @@ public class AuthController {
         return new AuthResponse(jwt.issue(u.getUsername(), u.getRole().name()), u.getUsername(), u.getRole().name());
     }
 
+    // Fixed BCrypt hash used to equalise the work done on the unknown-username and
+    // disabled-account paths so login response timing cannot be used to distinguish
+    // them from a live account with a wrong password.
+    private static final String DUMMY_HASH =
+            "$2a$10$7EqJtq98hPqEX7fNZaFWoO6Vb2r0F7fLYgC9Y7Y4g3WQw3H0pT7UC";
+
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest req) {
-        User u = users.findByUsername(req.username())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
-        if (!u.isEnabled() || !encoder.matches(req.password(), u.getPasswordHash())) {
+        User u = users.findByUsername(req.username()).orElse(null);
+        String hash = u != null ? u.getPasswordHash() : DUMMY_HASH;
+        boolean passwordOk = encoder.matches(req.password(), hash);
+        if (u == null || !u.isEnabled() || !passwordOk) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
         return new AuthResponse(jwt.issue(u.getUsername(), u.getRole().name()), u.getUsername(), u.getRole().name());

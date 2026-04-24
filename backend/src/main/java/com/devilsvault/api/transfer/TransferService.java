@@ -26,18 +26,18 @@ public class TransferService {
         }
 
         // Acquire row locks in a deterministic order (lowest id first) to avoid deadlocks
-        // when two users transfer in opposite directions simultaneously.
+        // when two users transfer in opposite directions simultaneously. Keep the locked
+        // references and use them directly so the balance check cannot accidentally read
+        // an unlocked copy if the persistence context is ever evicted/cleared.
         long firstId = Math.min(req.sourceAccountId(), req.targetAccountId());
         long secondId = Math.max(req.sourceAccountId(), req.targetAccountId());
-        accounts.findByIdForUpdate(firstId)
+        Account first = accounts.findByIdForUpdate(firstId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
-        accounts.findByIdForUpdate(secondId)
+        Account second = accounts.findByIdForUpdate(secondId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
 
-        Account source = accounts.findById(req.sourceAccountId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Source account not found"));
-        Account target = accounts.findById(req.targetAccountId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target account not found"));
+        Account source = first.getId().equals(req.sourceAccountId()) ? first : second;
+        Account target = first.getId().equals(req.targetAccountId()) ? first : second;
 
         if (!source.getOwner().getUsername().equals(username)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to debit this account");

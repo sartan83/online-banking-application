@@ -11,11 +11,13 @@ export const api = axios.create({
 
 // Prime the XSRF-TOKEN cookie on app load so the first mutating request has a token to echo.
 // Spring emits the cookie on any response because we eagerly load CSRF on the server side.
+// We bypass the `/api` baseURL here because actuator is served directly under the backend root.
 export async function primeCsrf(): Promise<void> {
   try {
-    await api.get("/actuator/health");
+    await axios.get("/actuator/health", { withCredentials: true });
   } catch {
-    // non-fatal: login/register paths are CSRF-exempt; subsequent calls after login will re-prime.
+    // non-fatal: login/register paths are CSRF-exempt; the response from those endpoints
+    // still emits XSRF-TOKEN so subsequent mutating calls are covered either way.
   }
 }
 
