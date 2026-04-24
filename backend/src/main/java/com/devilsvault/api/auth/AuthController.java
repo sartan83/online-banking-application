@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,7 +59,14 @@ public class AuthController {
         u.setPasswordHash(encoder.encode(req.password()));
         u.setFullName(req.fullName());
         u.setRole(Role.CUSTOMER);
-        users.save(u);
+        try {
+            users.save(u);
+        } catch (DataIntegrityViolationException ex) {
+            // Covers the TOCTOU window between existsBy* checks above and save():
+            // a concurrent registration with the same username or email can slip through and
+            // get rejected by the DB UNIQUE constraint. Surface it as 409, not 500.
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username or email already registered", ex);
+        }
         return new AuthResponse(jwt.issue(u.getUsername(), u.getRole().name()), u.getUsername(), u.getRole().name());
     }
 

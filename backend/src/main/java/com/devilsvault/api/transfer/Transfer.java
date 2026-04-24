@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "transfer")
@@ -46,8 +47,9 @@ public class Transfer {
     @Column(nullable = false, length = 16)
     private Status status = Status.PENDING;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt = OffsetDateTime.now();
+    private OffsetDateTime createdAt;
 
     public Long getId() { return id; }
     public Account getSource() { return source; }
