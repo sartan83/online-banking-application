@@ -71,7 +71,7 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: fs
           scan-ref: backend
@@ -94,7 +94,7 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: fs
           scan-ref: frontend
@@ -117,7 +117,7 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: config
           scan-ref: infra
@@ -149,19 +149,30 @@ jobs:
       - name: Scan backend + frontend lockfiles
         run: |
           set -uo pipefail
+          # OSV-Scanner exit-code conventions:
+          #   0 -> no findings
+          #   1 -> vulnerabilities reported (we still want the SARIF +
+          #        JSON files; we'll decide pass/fail from severity below)
+          #  >1 -> tool error (corrupt lockfile, network, bad args, etc.)
+          # Tolerate exit 1 only — anything higher means the gate didn't
+          # actually run and we must not let the build pass.
+          run_scanner() {
+            local fmt="$1" out="$2" rc=0
+            osv-scanner \
+              --skip-git \
+              --format="$fmt" \
+              --output="$out" \
+              ./backend ./frontend || rc=$?
+            if [ "$rc" -gt 1 ]; then
+              echo "::error::osv-scanner ($fmt) failed unexpectedly (exit $rc)"
+              exit "$rc"
+            fi
+          }
           # Emit two formats: SARIF for the GitHub Security tab (always
           # uploaded so reviewers can see every finding regardless of
           # severity), and JSON so we can post-filter by severity.
-          osv-scanner \
-            --skip-git \
-            --format=sarif \
-            --output=osv.sarif \
-            ./backend ./frontend || true
-          osv-scanner \
-            --skip-git \
-            --format=json \
-            --output=osv.json \
-            ./backend ./frontend || true
+          run_scanner sarif osv.sarif
+          run_scanner json osv.json
 
           # Fail the build only on HIGH or CRITICAL findings — MEDIUM/LOW
           # advisories surface in the Security tab but do not gate merges.
