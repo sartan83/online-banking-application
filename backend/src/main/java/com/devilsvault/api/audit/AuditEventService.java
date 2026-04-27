@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -75,6 +77,20 @@ public class AuditEventService {
             String resourceType,
             String resourceId,
             Map<String, Object> payload) {
+        return recordWithContext(type, outcome, actorUsername,
+                currentClientIp(), currentCorrelationId(),
+                resourceType, resourceId, payload);
+    }
+
+    private AuditEvent recordWithContext(
+            AuditEventType type,
+            AuditOutcome outcome,
+            String actorUsername,
+            String actorIp,
+            String correlationId,
+            String resourceType,
+            String resourceId,
+            Map<String, Object> payload) {
         // The synchronized block must wrap the entire transaction lifecycle —
         // BEGIN, read prev_hash, INSERT, COMMIT — otherwise a second writer
         // can read the same prev_hash before the first writer's INSERT is
@@ -88,8 +104,6 @@ public class AuditEventService {
                         .map(AuditEvent::getEntryHash)
                         .orElse(null);
 
-                String correlationId = currentCorrelationId();
-                String actorIp = currentClientIp();
                 String canonicalPayload = canonicalize(payload);
 
                 String entryHash = hmacSha256Hex(prevHash, type, outcome, actorUsername,
@@ -108,6 +122,45 @@ public class AuditEventService {
                 event.setEntryHash(entryHash);
                 return repo.save(event);
             });
+        }
+    }
+
+    /**
+     * Records the event only after the surrounding business transaction
+     * commits. Use this for SUCCESS-shaped events where the audit row would
+     * be a phantom if the outer transaction subsequently rolls back (e.g.
+     * a transfer whose balance UPDATEs fail to flush). If there is no
+     * active outer transaction, the event is recorded immediately so callers
+     * outside a {@code @Transactional} boundary still get an audit entry.
+     *
+     * <p>Failure-shaped events ({@code TRANSFER_REJECTED}, login failures)
+     * must keep using {@link #record} directly: those <em>should</em>
+     * survive rollback so the rejection is on the record.
+     */
+    public void recordOnCommit(
+            AuditEventType type,
+            AuditOutcome outcome,
+            String actorUsername,
+            String resourceType,
+            String resourceId,
+            Map<String, Object> payload) {
+        // Snapshot request-scoped values now: the afterCommit callback fires
+        // during the outer commit, but commit can run on a different code
+        // path (e.g. after the controller method returns) where MDC and
+        // RequestContextHolder may have been cleared by their filters.
+        String correlationId = currentCorrelationId();
+        String actorIp = currentClientIp();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    recordWithContext(type, outcome, actorUsername, actorIp,
+                            correlationId, resourceType, resourceId, payload);
+                }
+            });
+        } else {
+            recordWithContext(type, outcome, actorUsername, actorIp,
+                    correlationId, resourceType, resourceId, payload);
         }
     }
 

@@ -81,7 +81,11 @@ public class TransferService {
         payload.put("targetAccountId", req.targetAccountId());
         payload.put("amount", amount.toPlainString());
         payload.put("currency", source.getCurrency());
-        audit.record(AuditEventType.TRANSFER_COMPLETED, AuditOutcome.SUCCESS,
+        // Defer until the outer transaction actually commits: the balance
+        // UPDATEs and transfer INSERT here are still pending in Hibernate's
+        // persistence context and will only flush at commit. If commit
+        // fails we must NOT record a phantom TRANSFER_COMPLETED.
+        audit.recordOnCommit(AuditEventType.TRANSFER_COMPLETED, AuditOutcome.SUCCESS,
                 username, "transfer", String.valueOf(saved.getId()), payload);
         return saved;
     }

@@ -16,7 +16,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -30,6 +32,9 @@ class AuditEventServiceTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    PlatformTransactionManager txManager;
 
     @BeforeEach
     @Transactional
@@ -151,6 +156,37 @@ class AuditEventServiceTest {
         assertThat(distinctPrev)
                 .as("each non-genesis entry must have a unique predecessor hash")
                 .isEqualTo(all.size() - 1L);
+    }
+
+    @Test
+    void recordOnCommitFiresOnlyAfterOuterCommit() {
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+
+        // Outer transaction commits → audit row materialises.
+        tx.executeWithoutResult(status ->
+                service.recordOnCommit(AuditEventType.TRANSFER_COMPLETED, AuditOutcome.SUCCESS,
+                        "alice", "transfer", "1", Map.of("amount", "1.00")));
+        assertThat(repo.findAllByOrderByIdAsc()).hasSize(1);
+
+        // Outer transaction rolls back → no phantom audit row.
+        tx.executeWithoutResult(status -> {
+            service.recordOnCommit(AuditEventType.TRANSFER_COMPLETED, AuditOutcome.SUCCESS,
+                    "bob", "transfer", "2", Map.of("amount", "9999.00"));
+            status.setRollbackOnly();
+        });
+        assertThat(repo.findAllByOrderByIdAsc())
+                .as("rolled-back outer transaction must not leave a TRANSFER_COMPLETED record")
+                .hasSize(1);
+    }
+
+    @Test
+    void recordOnCommitFiresImmediatelyOutsideTransaction() {
+        // Callers without an active @Transactional context (e.g. a controller
+        // method that doesn't open a transaction) should still get an audit
+        // row written eagerly.
+        service.recordOnCommit(AuditEventType.AUTH_LOGIN_SUCCESS, AuditOutcome.SUCCESS,
+                "alice", "user", "1", Map.of());
+        assertThat(repo.findAllByOrderByIdAsc()).hasSize(1);
     }
 
     @Test
