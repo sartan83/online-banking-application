@@ -184,11 +184,26 @@ jobs:
           # advisories surface in the Security tab but do not gate merges.
           # `database_specific.severity` is the GitHub-style label
           # (CRITICAL/HIGH/MODERATE/LOW) attached by the OSV record.
-          mapfile -t high < <(jq -r '
+          #
+          # NB: bash process substitution swallows the inner pipeline's exit
+          # code, so we materialise the filtered list on disk and check
+          # PIPESTATUS — otherwise a corrupt osv.json would yield an empty
+          # `high` array and the gate would pass silently.
+          set -o pipefail
+          jq -r '
             .results[]?.packages[]?.vulnerabilities[]?
             | select((.database_specific.severity // "") | ascii_upcase
                      | (. == "HIGH" or . == "CRITICAL"))
-            | .id' osv.json | sort -u)
+            | .id' osv.json | sort -u > osv-high.txt
+          # Snapshot PIPESTATUS atomically — any subsequent assignment
+          # would reset it.
+          rc=( "${PIPESTATUS[@]}" )
+          if [ "${rc[0]}" -ne 0 ] || [ "${rc[1]}" -ne 0 ]; then
+            echo "::error::OSV severity filter failed (jq=${rc[0]} sort=${rc[1]})"
+            exit 1
+          fi
+          mapfile -t high < osv-high.txt
+          set +o pipefail
 
           if [ "${#high[@]}" -gt 0 ]; then
             echo "::error::OSV-Scanner: ${#high[@]} HIGH/CRITICAL finding(s)"
