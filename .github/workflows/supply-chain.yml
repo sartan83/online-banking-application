@@ -80,6 +80,10 @@ jobs:
           ignore-unfixed: false
           format: sarif
           output: trivy-backend.sarif
+          # Without this the action forces TRIVY_SEVERITY to all levels for
+          # SARIF and trivy then exits 1 on any MEDIUM/LOW finding too,
+          # silently turning the gate into "any vulnerability fails CI".
+          limit-severities-for-sarif: "true"
       - if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -103,6 +107,7 @@ jobs:
           ignore-unfixed: false
           format: sarif
           output: trivy-frontend.sarif
+          limit-severities-for-sarif: "true"
       - if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -125,6 +130,7 @@ jobs:
           exit-code: "1"
           format: sarif
           output: trivy-config.sarif
+          limit-severities-for-sarif: "true"
       - if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
