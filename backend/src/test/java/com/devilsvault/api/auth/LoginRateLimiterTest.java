@@ -65,4 +65,39 @@ class LoginRateLimiterTest {
         // A fresh IP can still authenticate.
         assertThat(rl.tryAcquire("u-extra", "203.0.113.2").allowed()).isTrue();
     }
+
+    @Test
+    void exhaustedIpBucketDoesNotConsumeVictimUserTokens() {
+        // Regression for review finding 3145129717: a denied request must not
+        // cost a token in both buckets. After draining the attacker IP, a
+        // victim's user bucket should remain full and reachable from a
+        // different IP.
+        LoginRateLimiter rl = new LoginRateLimiter();
+        String attackerIp = "198.51.100.1";
+
+        // Drain the attacker IP bucket via fresh usernames.
+        for (int i = 0; i < LoginRateLimiter.MAX_ATTEMPTS_PER_IP; i++) {
+            assertThat(rl.tryAcquire("burner-" + i, attackerIp).allowed()).isTrue();
+        }
+        assertThat(rl.tryAcquire("burner-extra", attackerIp).allowed())
+                .as("attacker IP is now drained")
+                .isFalse();
+
+        // Attacker now hammers a specific victim username from the drained IP.
+        // Each attempt must be denied without consuming a token from the
+        // victim's user bucket.
+        for (int i = 0; i < LoginRateLimiter.MAX_ATTEMPTS_PER_USER * 2; i++) {
+            assertThat(rl.tryAcquire("victim", attackerIp).allowed())
+                    .as("victim attempt %d from drained IP", i)
+                    .isFalse();
+        }
+
+        // The victim's user bucket must still hold the full attempt budget;
+        // a different IP can authenticate the victim normally.
+        for (int i = 0; i < LoginRateLimiter.MAX_ATTEMPTS_PER_USER; i++) {
+            assertThat(rl.tryAcquire("victim", "203.0.113.50").allowed())
+                    .as("victim from fresh IP, attempt %d", i)
+                    .isTrue();
+        }
+    }
 }

@@ -58,17 +58,23 @@ public class LoginRateLimiter {
         Bucket userBucket = userBuckets.get(username, k -> newBucket(MAX_ATTEMPTS_PER_USER));
         Bucket ipBucket = ipBuckets.get(ip, k -> newBucket(MAX_ATTEMPTS_PER_IP));
 
+        // Consume sequentially with rollback so a denied request never costs a
+        // token in *both* buckets. If either bucket is empty, no other bucket is
+        // touched. This prevents an attacker who has already drained their own
+        // IP bucket from continuing to drain a victim's user bucket: once the
+        // IP token-consume here fails, the user token we just spent is restored.
         ConsumptionProbe userProbe = userBucket.tryConsumeAndReturnRemaining(1);
-        ConsumptionProbe ipProbe = ipBucket.tryConsumeAndReturnRemaining(1);
-
-        if (userProbe.isConsumed() && ipProbe.isConsumed()) {
-            return Decision.permit();
+        if (!userProbe.isConsumed()) {
+            return Decision.deny(Duration.ofNanos(userProbe.getNanosToWaitForRefill()));
         }
 
-        long nanosUser = userProbe.isConsumed() ? 0L : userProbe.getNanosToWaitForRefill();
-        long nanosIp = ipProbe.isConsumed() ? 0L : ipProbe.getNanosToWaitForRefill();
-        long nanosToWait = Math.max(nanosUser, nanosIp);
-        return Decision.deny(Duration.ofNanos(nanosToWait));
+        ConsumptionProbe ipProbe = ipBucket.tryConsumeAndReturnRemaining(1);
+        if (!ipProbe.isConsumed()) {
+            userBucket.addTokens(1);
+            return Decision.deny(Duration.ofNanos(ipProbe.getNanosToWaitForRefill()));
+        }
+
+        return Decision.permit();
     }
 
     /**
