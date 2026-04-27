@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.5</version>
+        <version>3.5.14</version>
         <relativePath/>
     </parent>
 
@@ -32,6 +32,7 @@
         <checkstyle.plugin.version>3.5.0</checkstyle.plugin.version>
         <checkstyle.version>10.18.2</checkstyle.version>
         <sonar.plugin.version>4.0.0.4121</sonar.plugin.version>
+        <cyclonedx.plugin.version>2.8.2</cyclonedx.plugin.version>
 
         <sonar.projectKey>sartan83_online-banking-application</sonar.projectKey>
         <sonar.organization>sartan83</sonar.organization>
@@ -215,6 +216,35 @@
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>${sonar.plugin.version}</version>
+            </plugin>
+
+            <!-- CycloneDX SBOM (DORA-2.5 / Art. 28). Emits target/bom.json on
+                 every package phase so CI can attach it to the build artefacts
+                 and downstream scanners can consume it. -->
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <version>${cyclonedx.plugin.version}</version>
+                <configuration>
+                    <projectType>application</projectType>
+                    <schemaVersion>1.5</schemaVersion>
+                    <includeBomSerialNumber>true</includeBomSerialNumber>
+                    <includeCompileScope>true</includeCompileScope>
+                    <includeProvidedScope>true</includeProvidedScope>
+                    <includeRuntimeScope>true</includeRuntimeScope>
+                    <includeSystemScope>true</includeSystemScope>
+                    <includeTestScope>false</includeTestScope>
+                    <includeLicenseText>false</includeLicenseText>
+                    <outputName>bom</outputName>
+                    <outputFormat>all</outputFormat>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>cyclonedx-package</id>
+                        <phase>package</phase>
+                        <goals><goal>makeAggregateBom</goal></goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

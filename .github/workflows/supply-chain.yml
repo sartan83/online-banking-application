@@ -1,0 +1,223 @@
+name: Supply chain
+
+# DORA-2.5 (Art. 28 ICT third-party risk). Three independent gates run in
+# parallel against the modernised stack only — the legacy Spring-MVC code at
+# the repo root is excluded from every scan because it is documented as
+# unmaintained reference material.
+#
+#   * sbom         — emit CycloneDX SBOMs for backend (Maven) and frontend
+#                    (npm) and upload them as build artefacts (90-day
+#                    retention) so they can be filed alongside the release.
+#   * trivy-fs     — Trivy scans backend/ + frontend/ for HIGH/CRITICAL CVEs
+#                    in declared dependencies. Fails the build on findings.
+#   * trivy-config — Trivy scans Dockerfiles + compose for misconfigurations.
+#   * osv-scanner  — Google's OSV-Scanner scans Maven + npm lockfiles against
+#                    the OSV.dev advisory database.
+#
+# All gates run on push, PR, and a daily cron so new advisories surface even
+# when no code changes.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 4 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    name: SBOM · CycloneDX
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Backend SBOM (CycloneDX)
+        working-directory: backend
+        run: mvn -B -ntp -DskipTests package
+      - name: Frontend deps
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+      - name: Frontend SBOM (CycloneDX)
+        working-directory: frontend
+        run: npx --yes @cyclonedx/cyclonedx-npm@2.0.0 --output-format JSON --output-file bom.json
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sboms
+          path: |
+            backend/target/bom.json
+            backend/target/bom.xml
+            frontend/bom.json
+          if-no-files-found: error
+          retention-days: 90
+
+  trivy-fs-backend:
+    name: Trivy · backend deps
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: backend
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: false
+          format: sarif
+          output: trivy-backend.sarif
+          # Without this the action forces TRIVY_SEVERITY to all levels for
+          # SARIF and trivy then exits 1 on any MEDIUM/LOW finding too,
+          # silently turning the gate into "any vulnerability fails CI".
+          limit-severities-for-sarif: "true"
+      - if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-backend.sarif
+          category: trivy-backend
+
+  trivy-fs-frontend:
+    name: Trivy · frontend deps
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: frontend
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: false
+          format: sarif
+          output: trivy-frontend.sarif
+          limit-severities-for-sarif: "true"
+      - if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: trivy-frontend
+
+  trivy-config:
+    name: Trivy · Dockerfiles + compose
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: infra
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          format: sarif
+          output: trivy-config.sarif
+          limit-severities-for-sarif: "true"
+      - if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-config
+
+  osv-scanner:
+    name: OSV-Scanner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OSV-Scanner
+        run: |
+          set -euo pipefail
+          curl -fsSL -o osv-scanner \
+            https://github.com/google/osv-scanner/releases/download/v1.9.2/osv-scanner_linux_amd64
+          chmod +x osv-scanner
+          sudo mv osv-scanner /usr/local/bin/osv-scanner
+      - name: Scan backend + frontend lockfiles
+        run: |
+          set -uo pipefail
+          # OSV-Scanner exit-code conventions:
+          #   0 -> no findings
+          #   1 -> vulnerabilities reported (we still want the SARIF +
+          #        JSON files; we'll decide pass/fail from severity below)
+          #  >1 -> tool error (corrupt lockfile, network, bad args, etc.)
+          # Tolerate exit 1 only — anything higher means the gate didn't
+          # actually run and we must not let the build pass.
+          run_scanner() {
+            local fmt="$1" out="$2" rc=0
+            osv-scanner \
+              --skip-git \
+              --format="$fmt" \
+              --output="$out" \
+              ./backend ./frontend || rc=$?
+            if [ "$rc" -gt 1 ]; then
+              echo "::error::osv-scanner ($fmt) failed unexpectedly (exit $rc)"
+              exit "$rc"
+            fi
+          }
+          # Emit two formats: SARIF for the GitHub Security tab (always
+          # uploaded so reviewers can see every finding regardless of
+          # severity), and JSON so we can post-filter by severity.
+          run_scanner sarif osv.sarif
+          run_scanner json osv.json
+
+          # Fail the build only on HIGH or CRITICAL findings — MEDIUM/LOW
+          # advisories surface in the Security tab but do not gate merges.
+          # `database_specific.severity` is the GitHub-style label
+          # (CRITICAL/HIGH/MODERATE/LOW) attached by the OSV record.
+          #
+          # NB: bash process substitution swallows the inner pipeline's exit
+          # code, so we materialise the filtered list on disk and check
+          # PIPESTATUS — otherwise a corrupt osv.json would yield an empty
+          # `high` array and the gate would pass silently.
+          set -o pipefail
+          jq -r '
+            .results[]?.packages[]?.vulnerabilities[]?
+            | select((.database_specific.severity // "") | ascii_upcase
+                     | (. == "HIGH" or . == "CRITICAL"))
+            | .id' osv.json | sort -u > osv-high.txt
+          # Snapshot PIPESTATUS atomically — any subsequent assignment
+          # would reset it.
+          rc=( "${PIPESTATUS[@]}" )
+          if [ "${rc[0]}" -ne 0 ] || [ "${rc[1]}" -ne 0 ]; then
+            echo "::error::OSV severity filter failed (jq=${rc[0]} sort=${rc[1]})"
+            exit 1
+          fi
+          mapfile -t high < osv-high.txt
+          set +o pipefail
+
+          if [ "${#high[@]}" -gt 0 ]; then
+            echo "::error::OSV-Scanner: ${#high[@]} HIGH/CRITICAL finding(s)"
+            for id in "${high[@]}"; do echo "  - $id"; done
+            exit 1
+          fi
+
+          # Echo MEDIUM/LOW findings for transparency in the run log.
+          jq -r '
+            .results[]?.packages[]?.vulnerabilities[]?
+            | "\(.database_specific.severity // "?") \(.id)"' osv.json \
+            | sort -u || true
+      - if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: osv.sarif
+          category: osv-scanner
