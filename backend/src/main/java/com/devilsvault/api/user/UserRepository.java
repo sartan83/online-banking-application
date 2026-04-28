@@ -13,5 +13,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailSearchHash(String emailSearchHash);
 
     @Query("SELECT u FROM User u WHERE LOWER(u.username) LIKE LOWER(CONCAT('%', :q, '%'))")
-    Page<User> searchByUsernameOrEmail(@Param("q") String q, Pageable pageable);
+    Page<User> searchByUsername(@Param("q") String q, Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE u.emailSearchHash = :hash")
+    Page<User> findByEmailHash(@Param("hash") String hash, Pageable pageable);
 }
