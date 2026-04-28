@@ -81,6 +81,7 @@ class JwksAndRefreshTokenTest {
         u.setPasswordHash(encoder.encode("password123"));
         u.setFullName("Admin " + username);
         u.setRole(Role.ADMIN);
+        u.setMfaEnabled(true);
         return users.save(u);
     }
 
@@ -200,9 +201,8 @@ class JwksAndRefreshTokenTest {
                         .header("Authorization", "Bearer " + targetAccessToken))
                 .andExpect(status().isOk());
 
-        // Admin revokes target's sessions
-        JsonNode adminLogin = loginUser("adminrevokecaller", "password123");
-        String adminAccessToken = adminLogin.get("accessToken").asText();
+        // Admin revokes target's sessions (use direct JWT since MFA-enabled admin can't log in via API)
+        String adminAccessToken = jwtService.issue(admin.getUsername(), admin.getRole().name());
 
         mvc.perform(post("/api/admin/sessions/" + target.getId() + "/revoke")
                         .with(csrf())

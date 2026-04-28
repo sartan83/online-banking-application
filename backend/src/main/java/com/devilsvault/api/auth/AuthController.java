@@ -65,7 +65,8 @@ public class AuthController {
             @NotBlank String password) {
     }
 
-    public record LoginResponse(String accessToken, String refreshToken, long expiresIn) {
+    public record LoginResponse(String accessToken, String refreshToken, long expiresIn,
+                                Boolean mfaRequired, String partialToken) {
     }
 
     public record RefreshRequest(@NotBlank String refreshToken) {
@@ -133,12 +134,20 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
         rateLimiter.onSuccessfulLogin(req.username());
+
+        if (u.isMfaEnabled()) {
+            String partialToken = jwt.issuePartialMfaToken(u.getUsername(), u.getRole().name());
+            LoginResponse body = new LoginResponse(null, null, 0, true, partialToken);
+            return ResponseEntity.ok(body);
+        }
+
         audit.record(AuditEventType.AUTH_LOGIN_SUCCESS, AuditOutcome.SUCCESS,
                 u.getUsername(), RESOURCE_TYPE_USER, String.valueOf(u.getId()), Map.of());
 
         String deviceLabel = httpReq.getHeader("User-Agent");
         RefreshTokenService.TokenPair pair = refreshTokenService.issueTokenPair(u, deviceLabel);
-        LoginResponse body = new LoginResponse(pair.accessToken(), pair.refreshToken(), pair.expiresIn());
+        LoginResponse body = new LoginResponse(pair.accessToken(), pair.refreshToken(), pair.expiresIn(),
+                null, null);
         return ResponseEntity.ok(body);
     }
 
@@ -150,7 +159,8 @@ public class AuthController {
         if (pair == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
         }
-        return ResponseEntity.ok(new LoginResponse(pair.accessToken(), pair.refreshToken(), pair.expiresIn()));
+        return ResponseEntity.ok(new LoginResponse(pair.accessToken(), pair.refreshToken(), pair.expiresIn(),
+                null, null));
     }
 
     @PostMapping("/logout")

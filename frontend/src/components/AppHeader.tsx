@@ -43,6 +43,9 @@ export default function AppHeader() {
       </div>
       <div className="flex items-center gap-3 text-sm">
         <span className="hidden sm:inline text-slate-600">{username}</span>
+        <NavLink to="/settings" className={linkClass}>
+          Settings
+        </NavLink>
         <button
           type="button"
           onClick={signOut}

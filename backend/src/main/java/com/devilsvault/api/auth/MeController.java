@@ -19,13 +19,13 @@ public class MeController {
         this.users = users;
     }
 
-    public record MeResponse(String username, String role) {
+    public record MeResponse(String username, String role, boolean mfaEnabled) {
     }
 
     @GetMapping
     public MeResponse me(Principal principal) {
         User user = users.findByUsername(principal.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        return new MeResponse(user.getUsername(), user.getRole().name());
+        return new MeResponse(user.getUsername(), user.getRole().name(), user.isMfaEnabled());
     }
 }

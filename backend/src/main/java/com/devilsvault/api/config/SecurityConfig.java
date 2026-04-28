@@ -1,5 +1,6 @@
 package com.devilsvault.api.config;
 
+import com.devilsvault.api.auth.AdminMfaFilter;
 import com.devilsvault.api.auth.JwtAuthenticationFilter;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +30,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter,
+                                             AdminMfaFilter adminMfaFilter) throws Exception {
         CookieCsrfTokenRepository tokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         CsrfTokenRequestAttributeHandler csrfHandler = new CsrfTokenRequestAttributeHandler();
         // null disables deferred loading so the XSRF-TOKEN cookie is issued on every response
@@ -43,6 +45,7 @@ public class SecurityConfig {
                         .ignoringRequestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login",
+                                "/api/auth/login/mfa",
                                 "/api/auth/refresh"))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -55,7 +58,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(adminMfaFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 

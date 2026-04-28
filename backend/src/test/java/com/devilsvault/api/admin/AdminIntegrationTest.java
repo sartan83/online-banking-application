@@ -58,6 +58,7 @@ class AdminIntegrationTest {
         admin.setPasswordHash(encoder.encode("adminpass"));
         admin.setFullName("Test Admin");
         admin.setRole(Role.ADMIN);
+        admin.setMfaEnabled(true);
         users.save(admin);
         adminToken = jwtService.issue(admin.getUsername(), admin.getRole().name());
 

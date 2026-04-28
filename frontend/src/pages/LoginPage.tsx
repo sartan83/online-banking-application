@@ -13,6 +13,10 @@ export default function LoginPage() {
     setError(null);
     try {
       const { data } = await api.post<LoginResponse>("/auth/login", { username, password });
+      if (data.mfaRequired && data.partialToken) {
+        navigate("/login/mfa", { state: { partialToken: data.partialToken, username } });
+        return;
+      }
       localStorage.setItem("token", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
       localStorage.setItem("username", username);

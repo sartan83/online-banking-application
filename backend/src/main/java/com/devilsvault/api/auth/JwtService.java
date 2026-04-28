@@ -94,6 +94,22 @@ public class JwtService {
                 .compact();
     }
 
+    public String issuePartialMfaToken(String username, String role) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .header().keyId(kid).and()
+                .subject(username)
+                .issuer(ISSUER)
+                .audience().add(AUDIENCE).and()
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(5, ChronoUnit.MINUTES)))
+                .id(UUID.randomUUID().toString())
+                .claim("scope", role)
+                .claim("mfa_pending", true)
+                .signWith(privateKey, Jwts.SIG.RS256)
+                .compact();
+    }
+
     public Claims parse(String token) {
         return Jwts.parser()
                 .requireIssuer(ISSUER)
