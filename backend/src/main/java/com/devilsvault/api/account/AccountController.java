@@ -44,9 +44,10 @@ public class AccountController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Principal principal) {
+        int effectivePage = Math.max(page, 0);
         int effectiveSize = Math.min(Math.max(size, 1), 100);
         return statementService.getStatement(
                 principal.getName(), id, since, until, direction,
-                PageRequest.of(page, effectiveSize));
+                PageRequest.of(effectivePage, effectiveSize));
     }
 }

@@ -60,7 +60,8 @@ public class StatementService {
         Page<Transfer> page = fetchFilteredPage(accountId, effectiveSince, effectiveUntil, direction, sortedPageable);
 
         if (page.isEmpty()) {
-            return new StatementPage(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0, 0);
+            return new StatementPage(List.of(), pageable.getPageNumber(), pageable.getPageSize(),
+                    page.getTotalElements(), page.getTotalPages());
         }
 
         List<Transfer> filteredTransfers = page.getContent();
