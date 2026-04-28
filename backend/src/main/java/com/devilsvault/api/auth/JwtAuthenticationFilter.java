@@ -21,9 +21,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwt;
+    private final JtiRevocationCache jtiRevocationCache;
 
-    public JwtAuthenticationFilter(JwtService jwt) {
+    public JwtAuthenticationFilter(JwtService jwt, JtiRevocationCache jtiRevocationCache) {
         this.jwt = jwt;
+        this.jtiRevocationCache = jtiRevocationCache;
     }
 
     @Override
@@ -34,12 +36,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             try {
                 Claims claims = jwt.parse(token);
+                String jti = claims.getId();
+                if (jti != null && jtiRevocationCache.isRevoked(jti)) {
+                    SecurityContextHolder.clearContext();
+                    chain.doFilter(req, res);
+                    return;
+                }
                 String username = claims.getSubject();
-                String role = claims.get("role", String.class);
+                String scope = claims.get("scope", String.class);
                 var auth = new UsernamePasswordAuthenticationToken(
                         username,
                         null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                        List.of(new SimpleGrantedAuthority("ROLE_" + scope)));
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
                 SecurityContextHolder.getContext().setAuthentication(auth);
                 CorrelationIdFilter.setActorFromPrincipal(auth);

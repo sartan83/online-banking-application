@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useIsAdmin } from "../hooks/useIsAdmin";
+import { api, clearAuthStorage } from "../api";
 
 export default function AppHeader() {
   const navigate = useNavigate();
@@ -9,9 +10,13 @@ export default function AppHeader() {
   const { isAdmin } = useIsAdmin();
 
   function signOut() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    localStorage.removeItem("role");
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      void api.post("/auth/logout", { refreshToken }).catch(() => {
+        // best-effort: clear local state regardless
+      });
+    }
+    clearAuthStorage();
     queryClient.clear();
     navigate("/login");
   }

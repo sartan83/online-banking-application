@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { api, AuthResponse } from "../api";
+import { api, LoginResponse } from "../api";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -12,9 +12,10 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
-      const { data } = await api.post<AuthResponse>("/auth/login", { username, password });
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("username", data.username);
+      const { data } = await api.post<LoginResponse>("/auth/login", { username, password });
+      localStorage.setItem("token", data.accessToken);
+      localStorage.setItem("refreshToken", data.refreshToken);
+      localStorage.setItem("username", username);
       navigate("/");
     } catch {
       setError("Invalid credentials");

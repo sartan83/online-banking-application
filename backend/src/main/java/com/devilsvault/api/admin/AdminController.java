@@ -62,4 +62,11 @@ public class AdminController {
     public AdminIntegrityDto checkAuditIntegrity(Principal principal) {
         return adminService.checkAuditIntegrity(principal.getName());
     }
+
+    @PostMapping("/sessions/{userId}/revoke")
+    public org.springframework.http.ResponseEntity<Void> revokeSessions(
+            @PathVariable Long userId, Principal principal) {
+        adminService.revokeUserSessions(userId, principal.getName());
+        return org.springframework.http.ResponseEntity.noContent().build();
+    }
 }
