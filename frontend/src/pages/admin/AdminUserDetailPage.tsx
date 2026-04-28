@@ -94,7 +94,9 @@ export default function AdminUserDetailPage() {
                       className={`px-2 py-0.5 rounded text-xs font-medium ${
                         a.status === "FROZEN"
                           ? "bg-blue-100 text-blue-800"
-                          : "bg-green-100 text-green-800"
+                          : a.status === "CLOSED"
+                            ? "bg-gray-100 text-gray-800"
+                            : "bg-green-100 text-green-800"
                       }`}
                     >
                       {a.status}
@@ -111,7 +113,7 @@ export default function AdminUserDetailPage() {
                       >
                         Unfreeze
                       </button>
-                    ) : (
+                    ) : a.status === "ACTIVE" ? (
                       <button
                         onClick={() => {
                           freezeMutation.mutate(a.id);
@@ -121,7 +123,7 @@ export default function AdminUserDetailPage() {
                       >
                         Freeze
                       </button>
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               ))}

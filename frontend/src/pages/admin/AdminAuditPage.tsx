@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
@@ -55,6 +55,13 @@ export default function AdminAuditPage() {
     mutationFn: async () => (await api.get<IntegrityResult>("/admin/audit/integrity")).data,
   });
 
+  useEffect(() => {
+    if (showIntegrity && !integrityMutation.data && !integrityMutation.isPending) {
+      integrityMutation.mutate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showIntegrity]);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -70,8 +77,7 @@ export default function AdminAuditPage() {
         </button>
       </div>
 
-      {(integrityMutation.data ?? (showIntegrity ? undefined : null)) !== null &&
-        integrityMutation.data != null && (
+      {integrityMutation.data != null && (
           <div
             className={`mb-4 p-3 rounded text-sm ${
               integrityMutation.data.ok
