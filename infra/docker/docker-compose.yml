@@ -43,7 +43,7 @@ services:
       DB_USER: devilsvault
       DB_PASSWORD: devilsvault
       JWT_SECRET: local-dev-secret-local-dev-secret-local-dev-secret-64-chars
-      CORS_ALLOWED_ORIGINS: http://localhost:5173
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,https://fine-forks-guess.loca.lt,https://fc1a8d21b323-tunnel-l4gugyix.devinapps.com
     ports:
       - "8080:8080"
 

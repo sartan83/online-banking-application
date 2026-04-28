@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { api, Account } from "../api";
 import TransferForm from "../components/TransferForm";
 import TransferHistory from "../components/TransferHistory";
@@ -36,14 +36,19 @@ export default function DashboardPage() {
           {data?.length === 0 && <p className="text-slate-600">No accounts yet.</p>}
           <ul className="grid gap-3 md:grid-cols-2">
             {data?.map((a) => (
-              <li key={a.id} className="bg-white rounded-lg shadow p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-slate-500">{a.accountType}</div>
-                  <div className="text-xs text-slate-400">#{a.id}</div>
-                </div>
-                <div className="text-xl font-semibold">
-                  {a.currency} {Number(a.balance).toFixed(2)}
-                </div>
+              <li key={a.id}>
+                <Link
+                  to={`/accounts/${String(a.id)}`}
+                  className="bg-white rounded-lg shadow p-4 flex items-center justify-between hover:ring-2 hover:ring-slate-300 transition block"
+                >
+                  <div>
+                    <div className="text-sm text-slate-500">{a.accountType}</div>
+                    <div className="text-xs text-slate-400">#{a.id}</div>
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {a.currency} {Number(a.balance).toFixed(2)}
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>
