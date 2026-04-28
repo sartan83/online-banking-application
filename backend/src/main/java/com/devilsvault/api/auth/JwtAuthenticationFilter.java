@@ -1,5 +1,6 @@
 package com.devilsvault.api.auth;
 
+import com.devilsvault.api.audit.CorrelationIdFilter;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -41,6 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         List.of(new SimpleGrantedAuthority("ROLE_" + role)));
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
                 SecurityContextHolder.getContext().setAuthentication(auth);
+                CorrelationIdFilter.setActorFromPrincipal(auth);
             } catch (JwtException ignored) {
                 SecurityContextHolder.clearContext();
             }
