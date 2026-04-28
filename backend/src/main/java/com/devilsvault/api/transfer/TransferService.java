@@ -51,13 +51,13 @@ public class TransferService {
             recordReject(username, req, "not_authorized");
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to debit this account");
         }
-        if (source.getStatus() == com.devilsvault.api.account.AccountStatus.FROZEN) {
-            recordReject(username, req, "account_frozen");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source account is frozen");
+        if (source.getStatus() != com.devilsvault.api.account.AccountStatus.ACTIVE) {
+            recordReject(username, req, "account_not_active");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source account is not active");
         }
-        if (target.getStatus() == com.devilsvault.api.account.AccountStatus.FROZEN) {
-            recordReject(username, req, "account_frozen");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Target account is frozen");
+        if (target.getStatus() != com.devilsvault.api.account.AccountStatus.ACTIVE) {
+            recordReject(username, req, "account_not_active");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Target account is not active");
         }
         if (!source.getCurrency().equals(target.getCurrency())) {
             recordReject(username, req, "currency_mismatch");

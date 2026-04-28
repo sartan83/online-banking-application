@@ -56,8 +56,8 @@ public class AdminService {
     public AdminAccountDto freezeAccount(Long accountId, String adminUsername) {
         Account account = accounts.findById(accountId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
-        if (account.getStatus() == AccountStatus.FROZEN) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is already frozen");
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is not active");
         }
         account.setStatus(AccountStatus.FROZEN);
         accounts.save(account);
