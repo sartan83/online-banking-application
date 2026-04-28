@@ -31,8 +31,7 @@ public class MfaService {
     public String generateSecret() {
         byte[] bytes = new byte[SECRET_BYTES];
         secureRandom.nextBytes(bytes);
-        return Base64.getEncoder().withoutPadding().encodeToString(bytes)
-                .replace("+", "A").replace("/", "B");
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     public String toBase32(String rawSecret) {
@@ -137,16 +136,7 @@ public class MfaService {
     }
 
     private static byte[] decodeSecret(String secret) {
-        return Base64.getDecoder().decode(
-                padBase64(secret.replace("A", "+").replace("B", "/")));
-    }
-
-    private static String padBase64(String s) {
-        int mod = s.length() % 4;
-        if (mod == 0) {
-            return s;
-        }
-        return s + "====".substring(mod);
+        return Base64.getUrlDecoder().decode(secret);
     }
 
     private static final String BASE32_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";

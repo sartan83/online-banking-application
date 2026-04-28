@@ -263,13 +263,28 @@ class MfaTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    // 9. Partial MFA token cannot be used as access token
+    @Test
+    void partialMfaToken_cannotAccessProtectedEndpoints() throws Exception {
+        User u = createAdminUser("mfa_admin9", "mfa_admin9@test.com", "pass1234");
+        String secret = mfaService.generateSecret();
+        u.setMfaSecret(secret);
+        u.setMfaEnabled(true);
+        u.setMfaEnrolledAt(java.time.OffsetDateTime.now());
+        users.save(u);
+
+        String partialToken = jwtService.issuePartialMfaToken("mfa_admin9", "ADMIN");
+        mvc().perform(get("/api/accounts")
+                        .header("Authorization", "Bearer " + partialToken))
+                .andExpect(status().isForbidden());
+    }
+
     private String generateValidTotpCode(String secret) {
         try {
             com.eatthepath.otp.TimeBasedOneTimePasswordGenerator totp =
                     new com.eatthepath.otp.TimeBasedOneTimePasswordGenerator(
                             java.time.Duration.ofSeconds(30), 6, "HmacSHA1");
-            byte[] keyBytes = java.util.Base64.getDecoder().decode(
-                    padBase64(secret.replace("A", "+").replace("B", "/")));
+            byte[] keyBytes = java.util.Base64.getUrlDecoder().decode(secret);
             javax.crypto.spec.SecretKeySpec key = new javax.crypto.spec.SecretKeySpec(keyBytes, "HmacSHA1");
             int code = totp.generateOneTimePassword(key, java.time.Instant.now());
             return String.format("%06d", code);
@@ -306,11 +321,4 @@ class MfaTest {
         }
     }
 
-    private static String padBase64(String s) {
-        int mod = s.length() % 4;
-        if (mod == 0) {
-            return s;
-        }
-        return s + "====".substring(mod);
-    }
 }
