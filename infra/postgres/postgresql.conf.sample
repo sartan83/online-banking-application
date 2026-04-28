@@ -1,0 +1,49 @@
+# ---------------------------------------------------------------
+# PostgreSQL WAL archiving configuration — EU DORA Art. 11
+#
+# Copy the settings below into your postgresql.conf (or include
+# this file via `include_dir`).  A server restart is required
+# after changing wal_level or archive_mode.
+# ---------------------------------------------------------------
+
+# --- WAL level (must be 'replica' or 'logical' for archiving) ---
+wal_level = replica
+
+# --- Enable continuous archiving ---
+archive_mode = on
+
+# --- Archive command (simple cp — suitable for single-node / local storage) ---
+# For production, replace with a command that ships WAL to durable
+# remote storage (S3, GCS, Azure Blob, NFS, etc.).
+#
+# Simple local copy:
+archive_command = 'cp %p /var/lib/postgresql/wal_archive/%f'
+#
+# Production-grade alternatives (uncomment ONE):
+#
+# AWS S3 (via aws-cli):
+# archive_command = 'aws s3 cp %p s3://your-wal-bucket/%f --sse AES256'
+#
+# Google Cloud Storage:
+# archive_command = 'gsutil cp %p gs://your-wal-bucket/%f'
+#
+# Azure Blob Storage:
+# archive_command = 'az storage blob upload --file %p --container-name wal-archive --name %f --auth-mode login'
+#
+# pgBackRest (recommended for large deployments):
+# archive_command = 'pgbackrest --stanza=main archive-push %p'
+#
+# WAL-G:
+# archive_command = 'wal-g wal-push %p'
+
+# --- Archive timeout (force switch even if WAL segment isn't full) ---
+# This bounds your maximum data loss (RPO). At the default 16 MB
+# segment size and a 5-minute timeout, RPO <= ~5 minutes of WAL.
+archive_timeout = 300
+
+# --- Recommended companion settings ---
+# max_wal_senders: number of concurrent streaming replication connections
+max_wal_senders = 3
+
+# wal_keep_size: WAL retained on disk as safety net (MB)
+wal_keep_size = 512
