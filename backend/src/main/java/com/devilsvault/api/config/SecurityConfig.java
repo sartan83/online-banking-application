@@ -62,7 +62,7 @@ public class SecurityConfig {
         cfg.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
-        cfg.setExposedHeaders(List.of("X-XSRF-TOKEN"));
+        cfg.setExposedHeaders(List.of("X-XSRF-TOKEN", "X-Correlation-Id"));
         cfg.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
         src.registerCorsConfiguration("/**", cfg);
