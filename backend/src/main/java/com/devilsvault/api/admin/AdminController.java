@@ -2,6 +2,7 @@ package com.devilsvault.api.admin;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 import java.security.Principal;
 import java.time.OffsetDateTime;
 import org.springframework.data.domain.Page;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Validated
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
