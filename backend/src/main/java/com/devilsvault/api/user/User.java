@@ -1,6 +1,8 @@
 package com.devilsvault.api.user;
 
+import com.devilsvault.api.crypto.EmailEncryptionConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -23,8 +25,12 @@ public class User {
     @Column(nullable = false, unique = true, length = 64)
     private String username;
 
-    @Column(nullable = false, unique = true)
+    @Convert(converter = EmailEncryptionConverter.class)
+    @Column(name = "email", columnDefinition = "BYTEA")
     private String email;
+
+    @Column(name = "email_search_hash", length = 64)
+    private String emailSearchHash;
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
@@ -65,6 +71,8 @@ public class User {
     public void setUsername(String username) { this.username = username; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+    public String getEmailSearchHash() { return emailSearchHash; }
+    public void setEmailSearchHash(String emailSearchHash) { this.emailSearchHash = emailSearchHash; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public String getFullName() { return fullName; }

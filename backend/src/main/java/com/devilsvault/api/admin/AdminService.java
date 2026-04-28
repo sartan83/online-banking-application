@@ -8,9 +8,11 @@ import com.devilsvault.api.audit.AuditEventService;
 import com.devilsvault.api.audit.AuditEventType;
 import com.devilsvault.api.audit.AuditOutcome;
 import com.devilsvault.api.auth.RefreshTokenService;
+import com.devilsvault.api.crypto.EncryptionService;
 import com.devilsvault.api.user.User;
 import com.devilsvault.api.user.UserRepository;
 import java.time.OffsetDateTime;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,15 +30,17 @@ public class AdminService {
     private final AuditEventRepository auditRepo;
     private final AuditEventService auditService;
     private final RefreshTokenService refreshTokenService;
+    private final EncryptionService encryption;
 
     public AdminService(UserRepository users, AccountRepository accounts,
                         AuditEventRepository auditRepo, AuditEventService auditService,
-                        RefreshTokenService refreshTokenService) {
+                        RefreshTokenService refreshTokenService, EncryptionService encryption) {
         this.users = users;
         this.accounts = accounts;
         this.auditRepo = auditRepo;
         this.auditService = auditService;
         this.refreshTokenService = refreshTokenService;
+        this.encryption = encryption;
     }
 
     public Page<AdminUserDto> listUsers(String q, int page, int size) {
@@ -44,7 +48,14 @@ public class AdminService {
         if (q == null || q.isBlank()) {
             return users.findAll(pageable).map(AdminUserDto::from);
         }
-        return users.searchByUsernameOrEmail(q, pageable).map(AdminUserDto::from);
+        if (q.contains("@")) {
+            String hash = encryption.sha256Hex(q.toLowerCase(Locale.ROOT));
+            Page<User> byHash = users.findByEmailHash(hash, pageable);
+            if (!byHash.isEmpty()) {
+                return byHash.map(AdminUserDto::from);
+            }
+        }
+        return users.searchByUsername(q, pageable).map(AdminUserDto::from);
     }
 
     public AdminUserDetailDto getUser(Long id) {

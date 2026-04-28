@@ -3,6 +3,7 @@ package com.devilsvault.api.auth;
 import com.devilsvault.api.audit.AuditEventService;
 import com.devilsvault.api.audit.AuditEventType;
 import com.devilsvault.api.audit.AuditOutcome;
+import com.devilsvault.api.crypto.EncryptionService;
 import com.devilsvault.api.user.Role;
 import com.devilsvault.api.user.User;
 import com.devilsvault.api.user.UserRepository;
@@ -37,6 +38,7 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final LoginRateLimiter rateLimiter;
     private final AuditEventService audit;
+    private final EncryptionService encryption;
 
     public AuthController(
             UserRepository users,
@@ -44,13 +46,15 @@ public class AuthController {
             JwtService jwt,
             RefreshTokenService refreshTokenService,
             LoginRateLimiter rateLimiter,
-            AuditEventService audit) {
+            AuditEventService audit,
+            EncryptionService encryption) {
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
         this.refreshTokenService = refreshTokenService;
         this.rateLimiter = rateLimiter;
         this.audit = audit;
+        this.encryption = encryption;
     }
 
     public record RegisterRequest(
@@ -85,7 +89,8 @@ public class AuthController {
                     req.username(), RESOURCE_TYPE_USER, null, Map.of(PAYLOAD_KEY_REASON, "username_taken"));
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already taken");
         }
-        if (users.existsByEmail(req.email())) {
+        String emailHash = encryption.sha256Hex(req.email().toLowerCase(java.util.Locale.ROOT));
+        if (users.existsByEmailSearchHash(emailHash)) {
             audit.record(AuditEventType.AUTH_REGISTER_FAILURE, AuditOutcome.FAILURE,
                     req.username(), RESOURCE_TYPE_USER, null, Map.of(PAYLOAD_KEY_REASON, "email_taken"));
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
@@ -93,6 +98,7 @@ public class AuthController {
         User u = new User();
         u.setUsername(req.username());
         u.setEmail(req.email());
+        u.setEmailSearchHash(emailHash);
         u.setPasswordHash(encoder.encode(req.password()));
         u.setFullName(req.fullName());
         u.setRole(Role.CUSTOMER);

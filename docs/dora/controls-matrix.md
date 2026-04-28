@@ -17,4 +17,5 @@ Digital Operational Resilience Act (DORA).
 | Art. 28 | ICT third-party risk — vendor register | **Implemented** | `docs/dora/vendor-register.csv` — populated with actual application dependencies (PostgreSQL, Redis, Spring, React, GitHub, Docker, etc.). Columns: criticality, data accessed, Art. 30 contract clauses, exit-strategy link, last review date. |
 | Art. 28 | ICT third-party risk — supply-chain scanning | **Partial** | CycloneDX SBOMs, Trivy, and OSV-Scanner gates in `supply-chain.yml` |
 | Art. 28(8) | ICT third-party exit strategy | **Template** | `docs/dora/exit-strategy-template.md` — data extraction, alternative provider assessment, transition timeline, contractual cooperation requirements. Requires per-vendor completion. |
+| Annex I | Encryption of personal data at rest | **Partial** | Application-level AES-256-GCM on `users.email` via JPA `AttributeConverter`; deterministic SHA-256 hash for lookup. pgcrypto extension enabled. Broader rollout to other PII columns planned. See `docs/dora/key-management.md`. |
 | Art. 45 | Information sharing | Planned | — |
