@@ -10,7 +10,7 @@ Modernization of the original CSE545 Secure Banking System. The legacy Spring MV
 | Frontend  | Vite + React 18 + TypeScript, Tailwind CSS, TanStack Query, React Router, Axios |
 | Database  | PostgreSQL 16 |
 | Infra     | Docker Compose (Postgres + Redis + MailHog + backend + frontend) |
-| CI        | GitHub Actions (build, test, CodeQL) |
+| CI        | GitHub Actions (build, test, CodeQL, DORA metrics) |
 
 ## Repository layout
 
@@ -88,6 +88,17 @@ OpenAPI spec served at `/v3/api-docs`, Swagger UI at `/swagger-ui.html`.
 - CORS locked to the SPA origin via `CORS_ALLOWED_ORIGINS`.
 - Money stored as `NUMERIC(19,4)`; transfers are transactional with balance checks.
 - `.gitignore` blocks `*.jks`, `*.key`, `*.pem`, `.env*`, `database.properties`, `smtp.properties`. **Never** commit secrets — use env vars or a secret manager.
+
+## DORA Metrics
+
+Four key DevOps Research and Assessment (DORA) metrics are tracked automatically via GitHub Actions (`.github/workflows/dora.yml`):
+
+- **Deployment Frequency** — how often code is deployed to production.
+- **Lead Time for Changes** — time from commit to production deploy.
+- **Mean Time to Restore (MTTR)** — time to recover from a failure in production.
+- **Change Failure Rate** — percentage of deployments that cause a failure.
+
+The workflow runs weekly (Monday 09:00 UTC) and can be triggered manually via `workflow_dispatch`. Results are written to the GitHub Actions workflow summary.
 
 ## Modernization roadmap
 

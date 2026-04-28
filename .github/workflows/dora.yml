@@ -1,0 +1,57 @@
+name: DORA Metrics
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'   # Weekly on Monday at 9 AM UTC
+  workflow_dispatch:
+
+jobs:
+  dora:
+    name: Calculate DORA Metrics
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deployment Frequency
+        uses: DeveloperMetrics/deployment-frequency@main
+        with:
+          owner-repo: ${{ github.repository }}
+          default-branch: main
+          number-of-days: 30
+          workflows: 'CI'
+          pat-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lead Time for Changes
+        uses: DeveloperMetrics/lead-time-for-changes@main
+        with:
+          owner-repo: ${{ github.repository }}
+          default-branch: main
+          number-of-days: 30
+          workflows: 'CI'
+          pat-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Change Failure Rate
+        uses: DeveloperMetrics/change-failure-rate@main
+        with:
+          owner-repo: ${{ github.repository }}
+          default-branch: main
+          number-of-days: 30
+          workflows: 'CI'
+          pat-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mean Time to Restore
+        uses: DeveloperMetrics/mean-time-to-restore@main
+        with:
+          owner-repo: ${{ github.repository }}
+          default-branch: main
+          number-of-days: 30
+          workflows: 'CI'
+          pat-token: ${{ secrets.GITHUB_TOKEN }}

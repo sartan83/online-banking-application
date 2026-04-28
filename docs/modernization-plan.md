@@ -120,6 +120,7 @@ Goal: replace JSPs with a SPA.
 3. **Kubernetes** manifests or **Fly.io / Render / AWS ECS** for deploy; blue-green or rolling.
 4. **OpenTelemetry** instrumentation → Grafana Cloud / Datadog / Honeycomb; structured logs; RED/USE dashboards; alerting on error rate, p95 latency, failed logins.
 5. Backups & PITR for the database; disaster-recovery runbook.
+6. **DORA metrics** tracked via GitHub Actions: deployment frequency, lead time for changes, MTTR, and change failure rate — computed weekly and on-demand.
 
 ### Phase 8 — Testing discipline (integrated across phases)
 - Unit: JUnit 5 + Mockito on services.
