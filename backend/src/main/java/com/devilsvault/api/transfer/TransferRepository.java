@@ -2,6 +2,7 @@ package com.devilsvault.api.transfer;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -58,4 +59,16 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
                                 @Param("status") Transfer.Status status,
                                 @Param("before") OffsetDateTime before,
                                 @Param("beforeId") Long beforeId);
+
+    @Query("SELECT t FROM Transfer t WHERE (t.source.id = :acctId OR t.target.id = :acctId)"
+            + " AND t.status = :status"
+            + " AND (t.createdAt > :fromAt OR (t.createdAt = :fromAt AND t.id >= :fromId))"
+            + " AND (t.createdAt < :toAt OR (t.createdAt = :toAt AND t.id <= :toId))"
+            + " ORDER BY t.createdAt ASC, t.id ASC")
+    List<Transfer> findAllBetweenInclusive(@Param("acctId") Long acctId,
+                                           @Param("status") Transfer.Status status,
+                                           @Param("fromAt") OffsetDateTime fromAt,
+                                           @Param("fromId") Long fromId,
+                                           @Param("toAt") OffsetDateTime toAt,
+                                           @Param("toId") Long toId);
 }

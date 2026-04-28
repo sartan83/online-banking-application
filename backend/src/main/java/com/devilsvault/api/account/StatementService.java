@@ -6,6 +6,8 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -61,8 +63,9 @@ public class StatementService {
             return new StatementPage(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0, 0);
         }
 
-        BigDecimal balanceBeforePage = computeBalanceBeforeEntry(account, accountId, page.getContent().get(0));
-        List<StatementEntry> entries = buildEntries(page.getContent(), accountId, balanceBeforePage);
+        List<Transfer> filteredTransfers = page.getContent();
+        BigDecimal balanceBeforePage = computeBalanceBeforeEntry(account, accountId, filteredTransfers.get(0));
+        List<StatementEntry> entries = buildEntries(filteredTransfers, accountId, balanceBeforePage, direction);
 
         return new StatementPage(
                 entries,
@@ -97,8 +100,55 @@ public class StatementService {
         return openingBalance.subtract(debitsBefore).add(creditsBefore);
     }
 
-    private List<StatementEntry> buildEntries(List<Transfer> pageTransfers, Long accountId,
-                                               BigDecimal balanceBeforePage) {
+    private List<StatementEntry> buildEntries(List<Transfer> filteredTransfers, Long accountId,
+                                               BigDecimal balanceBeforePage, String direction) {
+        boolean hasDirectionFilter = DIRECTION_DEBIT.equals(direction) || DIRECTION_CREDIT.equals(direction);
+
+        if (!hasDirectionFilter) {
+            return buildEntriesSimple(filteredTransfers, accountId, balanceBeforePage);
+        }
+
+        Transfer first = filteredTransfers.get(0);
+        Transfer last = filteredTransfers.get(filteredTransfers.size() - 1);
+
+        List<Transfer> allBetween = transfers.findAllBetweenInclusive(
+                accountId, Transfer.Status.COMPLETED,
+                first.getCreatedAt(), first.getId(),
+                last.getCreatedAt(), last.getId());
+
+        Set<Long> filteredIds = filteredTransfers.stream()
+                .map(Transfer::getId)
+                .collect(Collectors.toSet());
+
+        List<StatementEntry> entries = new ArrayList<>();
+        BigDecimal runningBalance = balanceBeforePage;
+
+        for (Transfer t : allBetween) {
+            boolean isDebit = t.getSource().getId().equals(accountId);
+            if (isDebit) {
+                runningBalance = runningBalance.subtract(t.getAmount());
+            } else {
+                runningBalance = runningBalance.add(t.getAmount());
+            }
+
+            if (filteredIds.contains(t.getId())) {
+                Long counterpart = isDebit ? t.getTarget().getId() : t.getSource().getId();
+                entries.add(new StatementEntry(
+                        t.getId(),
+                        t.getCreatedAt(),
+                        isDebit ? DIRECTION_DEBIT : DIRECTION_CREDIT,
+                        t.getAmount(),
+                        t.getCurrency(),
+                        counterpart,
+                        t.getDescription(),
+                        runningBalance));
+            }
+        }
+        return entries;
+    }
+
+    private List<StatementEntry> buildEntriesSimple(List<Transfer> pageTransfers, Long accountId,
+                                                     BigDecimal balanceBeforePage) {
         List<StatementEntry> entries = new ArrayList<>();
         BigDecimal runningBalance = balanceBeforePage;
 

@@ -210,6 +210,54 @@ class AccountStatementTest {
     }
 
     @Test
+    void statement_runningBalanceWithDirectionFilter() throws Exception {
+        String token = registerAndLogin("stmtdirbal1", "stmtdirbal1@test.com", "password1");
+        User owner = users.findByUsername("stmtdirbal1").orElseThrow();
+
+        Account checking = new Account();
+        checking.setOwner(owner);
+        checking.setAccountType(AccountType.CHECKING);
+        checking.setBalance(new BigDecimal("5000.00"));
+        checking = accounts.save(checking);
+
+        Account savings = new Account();
+        savings.setOwner(owner);
+        savings.setAccountType(AccountType.SAVINGS);
+        savings.setBalance(new BigDecimal("5000.00"));
+        savings = accounts.save(savings);
+
+        // checking: 5000 -> 4900 (DEBIT 100) -> 4950 (CREDIT 50) -> 4750 (DEBIT 200)
+        doTransfer(token, checking.getId(), savings.getId(), "100.00", "out1");
+        doTransfer(token, savings.getId(), checking.getId(), "50.00", "in1");
+        doTransfer(token, checking.getId(), savings.getId(), "200.00", "out2");
+
+        MvcResult debitResult = mvc.perform(get("/api/accounts/" + checking.getId() + "/statement")
+                        .param("direction", "DEBIT")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode debits = mapper.readTree(debitResult.getResponse().getContentAsString());
+        assertThat(debits.get("items").size()).isEqualTo(2);
+        // First debit: 5000 - 100 = 4900
+        assertThat(new BigDecimal(debits.get("items").get(0).get("runningBalance").asText()))
+                .isEqualByComparingTo("4900.00");
+        // Second debit: must account for the CREDIT of 50 in between -> 4950 - 200 = 4750
+        assertThat(new BigDecimal(debits.get("items").get(1).get("runningBalance").asText()))
+                .isEqualByComparingTo("4750.00");
+
+        MvcResult creditResult = mvc.perform(get("/api/accounts/" + checking.getId() + "/statement")
+                        .param("direction", "CREDIT")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode credits = mapper.readTree(creditResult.getResponse().getContentAsString());
+        assertThat(credits.get("items").size()).isEqualTo(1);
+        // Credit: 4900 + 50 = 4950
+        assertThat(new BigDecimal(credits.get("items").get(0).get("runningBalance").asText()))
+                .isEqualByComparingTo("4950.00");
+    }
+
+    @Test
     void statement_crossUserIsolation() throws Exception {
         String tokenA = registerAndLogin("stmtiso1", "stmtiso1@test.com", "password1");
         String tokenB = registerAndLogin("stmtiso2", "stmtiso2@test.com", "password1");
