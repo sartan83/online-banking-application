@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.security.Principal;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
@@ -33,6 +34,7 @@ public class AuthController {
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final JwtService jwt;
+    private final RefreshTokenService refreshTokenService;
     private final LoginRateLimiter rateLimiter;
     private final AuditEventService audit;
 
@@ -40,11 +42,13 @@ public class AuthController {
             UserRepository users,
             PasswordEncoder encoder,
             JwtService jwt,
+            RefreshTokenService refreshTokenService,
             LoginRateLimiter rateLimiter,
             AuditEventService audit) {
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
+        this.refreshTokenService = refreshTokenService;
         this.rateLimiter = rateLimiter;
         this.audit = audit;
     }
@@ -59,6 +63,15 @@ public class AuthController {
     public record LoginRequest(
             @NotBlank String username,
             @NotBlank String password) {
+    }
+
+    public record LoginResponse(String accessToken, String refreshToken, long expiresIn) {
+    }
+
+    public record RefreshRequest(@NotBlank String refreshToken) {
+    }
+
+    public record LogoutRequest(@NotBlank String refreshToken) {
     }
 
     public record AuthResponse(String token, String username, String role) {
@@ -85,9 +98,6 @@ public class AuthController {
         try {
             users.save(u);
         } catch (DataIntegrityViolationException ex) {
-            // Covers the TOCTOU window between existsBy* checks above and save():
-            // a concurrent registration with the same username or email can slip through and
-            // get rejected by the DB UNIQUE constraint. Surface it as 409, not 500.
             audit.record(AuditEventType.AUTH_REGISTER_FAILURE, AuditOutcome.FAILURE,
                     req.username(), RESOURCE_TYPE_USER, null, Map.of(PAYLOAD_KEY_REASON, "unique_constraint"));
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username or email already registered", ex);
@@ -97,14 +107,12 @@ public class AuthController {
         return new AuthResponse(jwt.issue(u.getUsername(), u.getRole().name()), u.getUsername(), u.getRole().name());
     }
 
-    // Fixed BCrypt hash used to equalise the work done on the unknown-username and
-    // disabled-account paths so login response timing cannot be used to distinguish
-    // them from a live account with a wrong password.
     private static final String DUMMY_HASH =
             "$2a$10$7EqJtq98hPqEX7fNZaFWoO6Vb2r0F7fLYgC9Y7Y4g3WQw3H0pT7UC";
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req, HttpServletRequest httpReq) {
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest req, HttpServletRequest httpReq) {
         String ip = clientIp(httpReq);
         LoginRateLimiter.Decision decision = rateLimiter.tryAcquire(req.username(), ip);
         if (!decision.allowed()) {
@@ -127,17 +135,53 @@ public class AuthController {
         rateLimiter.onSuccessfulLogin(req.username());
         audit.record(AuditEventType.AUTH_LOGIN_SUCCESS, AuditOutcome.SUCCESS,
                 u.getUsername(), RESOURCE_TYPE_USER, String.valueOf(u.getId()), Map.of());
-        AuthResponse body = new AuthResponse(jwt.issue(u.getUsername(), u.getRole().name()), u.getUsername(), u.getRole().name());
+
+        String deviceLabel = httpReq.getHeader("User-Agent");
+        RefreshTokenService.TokenPair pair = refreshTokenService.issueTokenPair(u, deviceLabel);
+        LoginResponse body = new LoginResponse(pair.accessToken(), pair.refreshToken(), pair.expiresIn());
         return ResponseEntity.ok(body);
     }
 
-    /**
-     * Resolves the client IP using {@link HttpServletRequest#getRemoteAddr()}.
-     * When the backend is deployed behind a trusted reverse proxy, configure
-     * {@code server.forward-headers-strategy=framework} so Spring populates
-     * remote-addr from {@code X-Forwarded-For}; we deliberately do not parse
-     * that header here to avoid trusting a header any client can set.
-     */
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refresh(
+            @Valid @RequestBody RefreshRequest req, HttpServletRequest httpReq) {
+        String deviceLabel = httpReq.getHeader("User-Agent");
+        RefreshTokenService.TokenPair pair = refreshTokenService.rotate(req.refreshToken(), deviceLabel);
+        if (pair == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
+        }
+        return ResponseEntity.ok(new LoginResponse(pair.accessToken(), pair.refreshToken(), pair.expiresIn()));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest req, Principal principal) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        String username = principal.getName();
+        boolean revoked = refreshTokenService.revokeToken(req.refreshToken(), username);
+        if (!revoked) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Refresh token not found");
+        }
+        audit.record(AuditEventType.AUTH_LOGOUT, AuditOutcome.SUCCESS,
+                username, RESOURCE_TYPE_USER, null, Map.of());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/logout-all")
+    public ResponseEntity<Void> logoutAll(Principal principal) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        String username = principal.getName();
+        User u = users.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        refreshTokenService.revokeAllForUser(u);
+        audit.record(AuditEventType.AUTH_LOGOUT_ALL, AuditOutcome.SUCCESS,
+                username, RESOURCE_TYPE_USER, String.valueOf(u.getId()), Map.of());
+        return ResponseEntity.noContent().build();
+    }
+
     private static String clientIp(HttpServletRequest req) {
         String addr = req.getRemoteAddr();
         return addr == null ? "unknown" : addr;

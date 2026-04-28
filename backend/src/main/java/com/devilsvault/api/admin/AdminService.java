@@ -7,6 +7,7 @@ import com.devilsvault.api.audit.AuditEventRepository;
 import com.devilsvault.api.audit.AuditEventService;
 import com.devilsvault.api.audit.AuditEventType;
 import com.devilsvault.api.audit.AuditOutcome;
+import com.devilsvault.api.auth.RefreshTokenService;
 import com.devilsvault.api.user.User;
 import com.devilsvault.api.user.UserRepository;
 import java.time.OffsetDateTime;
@@ -26,13 +27,16 @@ public class AdminService {
     private final AccountRepository accounts;
     private final AuditEventRepository auditRepo;
     private final AuditEventService auditService;
+    private final RefreshTokenService refreshTokenService;
 
     public AdminService(UserRepository users, AccountRepository accounts,
-                        AuditEventRepository auditRepo, AuditEventService auditService) {
+                        AuditEventRepository auditRepo, AuditEventService auditService,
+                        RefreshTokenService refreshTokenService) {
         this.users = users;
         this.accounts = accounts;
         this.auditRepo = auditRepo;
         this.auditService = auditService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     public Page<AdminUserDto> listUsers(String q, int page, int size) {
@@ -95,5 +99,15 @@ public class AdminService {
                 status.valid() ? AuditOutcome.SUCCESS : AuditOutcome.FAILURE,
                 adminUsername, "audit", null, Map.of("valid", status.valid()));
         return new AdminIntegrityDto(status.valid(), status.firstInvalidId(), total);
+    }
+
+    @Transactional
+    public void revokeUserSessions(Long userId, String adminUsername) {
+        User target = users.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        refreshTokenService.revokeAllForUser(target);
+        auditService.record(AuditEventType.SESSION_REVOKED, AuditOutcome.SUCCESS,
+                adminUsername, "user", String.valueOf(userId),
+                Map.of("targetUsername", target.getUsername()));
     }
 }

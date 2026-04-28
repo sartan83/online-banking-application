@@ -42,10 +42,12 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(csrfHandler)
                         .ignoringRequestMatchers(
                                 "/api/auth/register",
-                                "/api/auth/login"))
+                                "/api/auth/login",
+                                "/api/auth/refresh"))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**",
+                                "/.well-known/jwks.json",
                                 "/actuator/health",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
