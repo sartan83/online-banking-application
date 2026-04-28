@@ -41,27 +41,6 @@ class MfaTest {
         return MockMvcBuilders.webAppContextSetup(wac).addFilter(springSecurityFilterChain).build();
     }
 
-    private String registerAndGetToken(String username, String email) throws Exception {
-        String body = mapper.writeValueAsString(java.util.Map.of(
-                "username", username, "email", email,
-                "password", "password1", "fullName", "Test User"));
-        MvcResult r = mvc().perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isOk())
-                .andReturn();
-        return mapper.readTree(r.getResponse().getContentAsString()).get("token").asText();
-    }
-
-    private String loginAndGetAccessToken(String username, String password) throws Exception {
-        String body = mapper.writeValueAsString(java.util.Map.of(
-                "username", username, "password", password));
-        MvcResult r = mvc().perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isOk())
-                .andReturn();
-        return mapper.readTree(r.getResponse().getContentAsString()).get("accessToken").asText();
-    }
-
     private User createAdminUser(String username, String email, String password) {
         User u = new User();
         u.setUsername(username);
@@ -86,7 +65,7 @@ class MfaTest {
     @Test
     void enrollAndVerify_flipsMfaEnabled() throws Exception {
         createAdminUser("mfa_admin1", "mfa_admin1@test.com", "pass1234");
-        String token = loginAndGetAccessToken("mfa_admin1", "pass1234");
+        String token = jwtService.issue("mfa_admin1", "ADMIN");
 
         // Enroll
         MvcResult enrollResult = mvc().perform(post("/api/auth/mfa/enroll")
@@ -208,7 +187,7 @@ class MfaTest {
     @Test
     void nonAdmin_canUseMfaOptionally() throws Exception {
         createCustomerUser("mfa_cust1", "mfa_cust1@test.com", "pass1234");
-        String token = loginAndGetAccessToken("mfa_cust1", "pass1234");
+        String token = jwtService.issue("mfa_cust1", "CUSTOMER");
 
         // Enroll
         mvc().perform(post("/api/auth/mfa/enroll")
@@ -233,7 +212,7 @@ class MfaTest {
     @Test
     void adminWithoutMfa_blockedFromAdminEndpoints() throws Exception {
         createAdminUser("mfa_admin7", "mfa_admin7@test.com", "pass1234");
-        String token = loginAndGetAccessToken("mfa_admin7", "pass1234");
+        String token = jwtService.issue("mfa_admin7", "ADMIN");
 
         MvcResult result = mvc().perform(get("/api/admin/users")
                         .header("Authorization", "Bearer " + token))
