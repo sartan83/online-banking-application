@@ -111,6 +111,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- TOTP MFA (DORA-2.7) -->
+        <dependency>
+            <groupId>com.eatthepath</groupId>
+            <artifactId>java-otp</artifactId>
+            <version>0.4.0</version>
+        </dependency>
+
         <!-- Structured JSON logging (DORA-2.3) -->
         <dependency>
             <groupId>net.logstash.logback</groupId>

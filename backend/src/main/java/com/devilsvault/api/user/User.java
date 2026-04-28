@@ -39,6 +39,18 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "mfa_secret", length = 64)
+    private String mfaSecret;
+
+    @Column(name = "mfa_enabled", nullable = false)
+    private boolean mfaEnabled;
+
+    @Column(name = "mfa_enrolled_at")
+    private OffsetDateTime mfaEnrolledAt;
+
+    @Column(name = "mfa_recovery_codes_hash", columnDefinition = "TEXT")
+    private String mfaRecoveryCodesHash;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -61,6 +73,14 @@ public class User {
     public void setRole(Role role) { this.role = role; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public String getMfaSecret() { return mfaSecret; }
+    public void setMfaSecret(String mfaSecret) { this.mfaSecret = mfaSecret; }
+    public boolean isMfaEnabled() { return mfaEnabled; }
+    public void setMfaEnabled(boolean mfaEnabled) { this.mfaEnabled = mfaEnabled; }
+    public OffsetDateTime getMfaEnrolledAt() { return mfaEnrolledAt; }
+    public void setMfaEnrolledAt(OffsetDateTime mfaEnrolledAt) { this.mfaEnrolledAt = mfaEnrolledAt; }
+    public String getMfaRecoveryCodesHash() { return mfaRecoveryCodesHash; }
+    public void setMfaRecoveryCodesHash(String mfaRecoveryCodesHash) { this.mfaRecoveryCodesHash = mfaRecoveryCodesHash; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }

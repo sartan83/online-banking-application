@@ -36,6 +36,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             try {
                 Claims claims = jwt.parse(token);
+                Boolean mfaPending = claims.get("mfa_pending", Boolean.class);
+                if (Boolean.TRUE.equals(mfaPending)) {
+                    SecurityContextHolder.clearContext();
+                    chain.doFilter(req, res);
+                    return;
+                }
                 String jti = claims.getId();
                 if (jti != null && jtiRevocationCache.isRevoked(jti)) {
                     SecurityContextHolder.clearContext();
