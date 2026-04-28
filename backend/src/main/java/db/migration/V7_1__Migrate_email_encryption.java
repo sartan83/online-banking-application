@@ -44,6 +44,10 @@ public class V7_1__Migrate_email_encryption extends BaseJavaMigration {
 
         String base64Key = EncryptionUtil.resolveKey();
         if (base64Key.isEmpty()) {
+            if (isPostgres) {
+                throw new IllegalStateException(
+                        "DB_ENCRYPTION_KEY env var or system property must be set for production migration");
+            }
             base64Key = TEST_KEY;
         }
         byte[] key = EncryptionUtil.decodeKey(base64Key);

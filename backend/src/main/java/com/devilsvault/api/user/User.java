@@ -29,7 +29,7 @@ public class User {
     @Column(name = "email", columnDefinition = "BYTEA")
     private String email;
 
-    @Column(name = "email_search_hash", columnDefinition = "CHAR(64)")
+    @Column(name = "email_search_hash", length = 64)
     private String emailSearchHash;
 
     @Column(name = "password_hash", nullable = false)

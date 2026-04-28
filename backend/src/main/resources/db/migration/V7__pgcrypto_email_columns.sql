@@ -8,4 +8,4 @@
 -- only when PostgreSQL is detected.
 
 ALTER TABLE app_user ADD COLUMN email_enc BYTEA;
-ALTER TABLE app_user ADD COLUMN email_search_hash CHAR(64);
+ALTER TABLE app_user ADD COLUMN email_search_hash VARCHAR(64);
