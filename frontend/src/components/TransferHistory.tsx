@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
+import Spinner from "./Spinner";
 
 interface TransferItem {
   id: number;
@@ -39,7 +40,11 @@ export default function TransferHistory() {
     <div className="bg-white rounded-lg shadow p-6 space-y-4">
       <h3 className="text-lg font-semibold">Transfer History</h3>
 
-      {isLoading && <p className="text-slate-500">Loading transfers…</p>}
+      {isLoading && (
+        <div className="flex items-center gap-2 text-slate-500">
+          <Spinner /> Loading transfers…
+        </div>
+      )}
       {isError && (
         <p className="text-red-600">Failed to load transfers.</p>
       )}
@@ -54,11 +59,11 @@ export default function TransferHistory() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-slate-500">
-                  <th className="pb-2 pr-4">Date</th>
-                  <th className="pb-2 pr-4">Direction</th>
-                  <th className="pb-2 pr-4">Counterpart</th>
-                  <th className="pb-2 pr-4 text-right">Amount</th>
-                  <th className="pb-2">Memo</th>
+                  <th scope="col" className="pb-2 pr-4">Date</th>
+                  <th scope="col" className="pb-2 pr-4">Direction</th>
+                  <th scope="col" className="pb-2 pr-4">Counterpart</th>
+                  <th scope="col" className="pb-2 pr-4 text-right">Amount</th>
+                  <th scope="col" className="pb-2">Memo</th>
                 </tr>
               </thead>
               <tbody>

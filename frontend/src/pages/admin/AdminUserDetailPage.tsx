@@ -1,6 +1,8 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { api } from "../../api";
+import Spinner from "../../components/Spinner";
 
 interface AdminAccount {
   id: number;
@@ -33,7 +35,11 @@ export default function AdminUserDetailPage() {
       await api.post(`/admin/accounts/${String(accountId)}/freeze`);
     },
     onSuccess: async () => {
+      toast.success("Account frozen.");
       await queryClient.invalidateQueries({ queryKey: ["admin-user", id] });
+    },
+    onError: () => {
+      toast.error("Failed to freeze account.");
     },
   });
 
@@ -42,12 +48,22 @@ export default function AdminUserDetailPage() {
       await api.post(`/admin/accounts/${String(accountId)}/unfreeze`);
     },
     onSuccess: async () => {
+      toast.success("Account unfrozen.");
       await queryClient.invalidateQueries({ queryKey: ["admin-user", id] });
+    },
+    onError: () => {
+      toast.error("Failed to unfreeze account.");
     },
   });
 
-  if (isLoading) return <p>Loading…</p>;
-  if (error) return <p className="text-red-600">Failed to load user.</p>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-slate-500">
+        <Spinner /> Loading user…
+      </div>
+    );
+  }
+  if (error instanceof Error) return <p className="text-red-600">Failed to load user.</p>;
   if (!data) return null;
 
   return (
@@ -57,7 +73,7 @@ export default function AdminUserDetailPage() {
       </Link>
       <h2 className="text-2xl font-semibold mt-2 mb-4">{data.username}</h2>
       <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <dl className="grid grid-cols-2 gap-2 text-sm">
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
           <dt className="text-slate-500">Email</dt>
           <dd>{data.email}</dd>
           <dt className="text-slate-500">Role</dt>
@@ -70,15 +86,15 @@ export default function AdminUserDetailPage() {
       {data.accounts.length === 0 ? (
         <p className="text-slate-500">No accounts.</p>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-100">
               <tr>
-                <th className="text-left px-4 py-2">ID</th>
-                <th className="text-left px-4 py-2">Type</th>
-                <th className="text-left px-4 py-2">Balance</th>
-                <th className="text-left px-4 py-2">Status</th>
-                <th className="text-left px-4 py-2">Actions</th>
+                <th scope="col" className="text-left px-4 py-2">ID</th>
+                <th scope="col" className="text-left px-4 py-2">Type</th>
+                <th scope="col" className="text-left px-4 py-2">Balance</th>
+                <th scope="col" className="text-left px-4 py-2">Status</th>
+                <th scope="col" className="text-left px-4 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -103,6 +119,7 @@ export default function AdminUserDetailPage() {
                   <td className="px-4 py-2">
                     {a.status === "FROZEN" ? (
                       <button
+                        type="button"
                         onClick={() => {
                           unfreezeMutation.mutate(a.id);
                         }}
@@ -113,6 +130,7 @@ export default function AdminUserDetailPage() {
                       </button>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => {
                           freezeMutation.mutate(a.id);
                         }}

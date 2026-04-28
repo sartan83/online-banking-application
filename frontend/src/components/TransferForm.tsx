@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
+import toast from "react-hot-toast";
 import { api, Account } from "../api";
 
 interface TransferFormProps {
@@ -17,8 +18,6 @@ export default function TransferForm({ accounts }: TransferFormProps) {
   const [targetAccountId, setTargetAccountId] = useState("");
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: async (payload: {
@@ -31,8 +30,7 @@ export default function TransferForm({ accounts }: TransferFormProps) {
       return res.data;
     },
     onSuccess: () => {
-      setSuccessMsg("Transfer completed successfully.");
-      setErrorMsg(null);
+      toast.success("Transfer completed successfully.");
       setSourceAccountId("");
       setTargetAccountId("");
       setAmount("");
@@ -41,36 +39,33 @@ export default function TransferForm({ accounts }: TransferFormProps) {
       void queryClient.invalidateQueries({ queryKey: ["transfers"] });
     },
     onError: (err: Error) => {
-      setSuccessMsg(null);
       const message =
         err instanceof AxiosError
           ? (err.response?.data as ApiErrorBody | undefined)?.message ??
             "Transfer failed"
           : "Transfer failed";
-      setErrorMsg(message);
+      toast.error(message);
     },
   });
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setSuccessMsg(null);
-    setErrorMsg(null);
 
     if (!sourceAccountId) {
-      setErrorMsg("Please select a source account.");
+      toast.error("Please select a source account.");
       return;
     }
     if (!targetAccountId || isNaN(Number(targetAccountId))) {
-      setErrorMsg("Please enter a valid target account ID.");
+      toast.error("Please enter a valid target account ID.");
       return;
     }
     const parsed = parseFloat(amount);
     if (isNaN(parsed) || parsed < 0.01) {
-      setErrorMsg("Amount must be at least 0.01.");
+      toast.error("Amount must be at least 0.01.");
       return;
     }
     if (memo.length > 140) {
-      setErrorMsg("Memo must be 140 characters or fewer.");
+      toast.error("Memo must be 140 characters or fewer.");
       return;
     }
 
@@ -90,17 +85,6 @@ export default function TransferForm({ accounts }: TransferFormProps) {
       className="bg-white rounded-lg shadow p-6 space-y-4"
     >
       <h3 className="text-lg font-semibold">New Transfer</h3>
-
-      {successMsg && (
-        <p className="text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 text-sm">
-          {successMsg}
-        </p>
-      )}
-      {errorMsg && (
-        <p className="text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 text-sm">
-          {errorMsg}
-        </p>
-      )}
 
       <label className="block text-sm">
         Source account

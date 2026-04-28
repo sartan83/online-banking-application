@@ -1,23 +1,18 @@
 import axios, { AxiosError } from "axios";
+import toast from "react-hot-toast";
 
 export const api = axios.create({
   baseURL: "/api",
-  // Send cookies so Spring's XSRF-TOKEN cookie is round-tripped; axios reads it
-  // from `XSRF-TOKEN` and echoes it back as `X-XSRF-TOKEN` on mutating requests.
   withCredentials: true,
   xsrfCookieName: "XSRF-TOKEN",
   xsrfHeaderName: "X-XSRF-TOKEN",
 });
 
-// Prime the XSRF-TOKEN cookie on app load so the first mutating request has a token to echo.
-// Spring emits the cookie on any response because we eagerly load CSRF on the server side.
-// We bypass the `/api` baseURL here because actuator is served directly under the backend root.
 export async function primeCsrf(): Promise<void> {
   try {
     await axios.get("/actuator/health", { withCredentials: true });
   } catch {
-    // non-fatal: login/register paths are CSRF-exempt; the response from those endpoints
-    // still emits XSRF-TOKEN so subsequent mutating calls are covered either way.
+    // non-fatal
   }
 }
 
@@ -34,7 +29,10 @@ api.interceptors.response.use(
   (err: unknown) => {
     if (err instanceof AxiosError && err.response?.status === 401) {
       localStorage.removeItem("token");
+      localStorage.removeItem("username");
+      localStorage.removeItem("role");
       if (window.location.pathname !== "/login") {
+        toast.error("Session expired, please log in again");
         window.location.href = "/login";
       }
     }

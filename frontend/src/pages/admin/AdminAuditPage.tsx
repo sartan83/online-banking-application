@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
+import Spinner from "../../components/Spinner";
 
 interface AuditEntry {
   id: number;
@@ -57,9 +58,10 @@ export default function AdminAuditPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between mb-4 gap-2">
         <h2 className="text-2xl font-semibold">Audit Log</h2>
         <button
+          type="button"
           onClick={() => {
             integrityMutation.mutate();
           }}
@@ -86,53 +88,69 @@ export default function AdminAuditPage() {
         )}
 
       <div className="flex gap-3 mb-4 flex-wrap">
-        <input
-          type="text"
-          placeholder="Event type"
-          className="border rounded px-3 py-1.5 text-sm"
-          value={eventType}
-          onChange={(e) => {
-            setEventType(e.target.value);
-            setPage(0);
-          }}
-        />
-        <input
-          type="text"
-          placeholder="Outcome"
-          className="border rounded px-3 py-1.5 text-sm"
-          value={outcome}
-          onChange={(e) => {
-            setOutcome(e.target.value);
-            setPage(0);
-          }}
-        />
-        <input
-          type="text"
-          placeholder="Actor username"
-          className="border rounded px-3 py-1.5 text-sm"
-          value={actorUsername}
-          onChange={(e) => {
-            setActorUsername(e.target.value);
-            setPage(0);
-          }}
-        />
+        <label className="text-sm">
+          <span className="sr-only">Event type</span>
+          <input
+            type="text"
+            placeholder="Event type"
+            className="border rounded px-3 py-1.5 text-sm"
+            value={eventType}
+            onChange={(e) => {
+              setEventType(e.target.value);
+              setPage(0);
+            }}
+          />
+        </label>
+        <label className="text-sm">
+          <span className="sr-only">Outcome</span>
+          <input
+            type="text"
+            placeholder="Outcome"
+            className="border rounded px-3 py-1.5 text-sm"
+            value={outcome}
+            onChange={(e) => {
+              setOutcome(e.target.value);
+              setPage(0);
+            }}
+          />
+        </label>
+        <label className="text-sm">
+          <span className="sr-only">Actor username</span>
+          <input
+            type="text"
+            placeholder="Actor username"
+            className="border rounded px-3 py-1.5 text-sm"
+            value={actorUsername}
+            onChange={(e) => {
+              setActorUsername(e.target.value);
+              setPage(0);
+            }}
+          />
+        </label>
       </div>
 
-      {isLoading && <p>Loading…</p>}
-      {error && <p className="text-red-600">Failed to load audit log.</p>}
-      {data && (
+      {isLoading && (
+        <div className="flex items-center gap-2 text-slate-500">
+          <Spinner /> Loading audit log…
+        </div>
+      )}
+      {error instanceof Error && <p className="text-red-600">Failed to load audit log.</p>}
+      {(data?.content.length ?? 0) === 0 && data != null && (
+        <p className="text-slate-500">No audit entries found.</p>
+      )}
+      {(data?.content.length ?? 0) > 0 && data != null && (
         <>
           <div className="bg-white rounded-lg shadow overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-100">
                 <tr>
-                  <th className="text-left px-3 py-2">ID</th>
-                  <th className="text-left px-3 py-2">Time</th>
-                  <th className="text-left px-3 py-2">Event</th>
-                  <th className="text-left px-3 py-2">Outcome</th>
-                  <th className="text-left px-3 py-2">Actor</th>
-                  <th className="text-left px-3 py-2">Resource</th>
-                  <th className="text-left px-3 py-2">Hash</th>
+                  <th scope="col" className="text-left px-3 py-2">ID</th>
+                  <th scope="col" className="text-left px-3 py-2">Time</th>
+                  <th scope="col" className="text-left px-3 py-2">Event</th>
+                  <th scope="col" className="text-left px-3 py-2">Outcome</th>
+                  <th scope="col" className="text-left px-3 py-2">Actor</th>
+                  <th scope="col" className="text-left px-3 py-2">Resource</th>
+                  <th scope="col" className="text-left px-3 py-2">Hash</th>
                 </tr>
               </thead>
               <tbody>
@@ -168,6 +186,7 @@ export default function AdminAuditPage() {
           </div>
           <div className="mt-4 flex items-center gap-4 text-sm">
             <button
+              type="button"
               onClick={() => {
                 setPage((p) => Math.max(0, p - 1));
               }}
@@ -180,6 +199,7 @@ export default function AdminAuditPage() {
               Page {data.number + 1} of {Math.max(data.totalPages, 1)}
             </span>
             <button
+              type="button"
               onClick={() => {
                 setPage((p) => p + 1);
               }}
