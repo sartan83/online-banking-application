@@ -1,9 +1,40 @@
-.classpath
-.project
+# Build artifacts
+target/
+dist/
+build/
+*.class
+*.jar
+*.war
+
+# Dependencies
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.iml
 .settings/
-target/
-bin/
+.project
+.classpath
+
+# Env & secrets — NEVER commit
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+database.properties
+smtp.properties
+
+# Logs
+*.log
+logs/
+
+# OS
 .DS_Store
-src/jdbc/config/backup
-src/main/resources/backup
-target/
+Thumbs.db
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
