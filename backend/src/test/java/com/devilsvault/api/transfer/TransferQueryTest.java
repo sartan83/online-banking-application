@@ -1,5 +1,6 @@
 package com.devilsvault.api.transfer;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -246,7 +247,7 @@ class TransferQueryTest {
                 .andExpect(status().isOk())
                 .andReturn();
         JsonNode aliceItems = mapper.readTree(aliceResult.getResponse().getContentAsString()).get("items");
-        assert aliceItems.get(0).get("direction").asText().equals("DEBIT");
+        assertThat(aliceItems.get(0).get("direction").asText()).isEqualTo("DEBIT");
 
         // From Bob's perspective: CREDIT
         MvcResult bobResult = mvc.perform(get("/api/transfers")
@@ -254,7 +255,7 @@ class TransferQueryTest {
                 .andExpect(status().isOk())
                 .andReturn();
         JsonNode bobItems = mapper.readTree(bobResult.getResponse().getContentAsString()).get("items");
-        assert bobItems.get(0).get("direction").asText().equals("CREDIT");
+        assertThat(bobItems.get(0).get("direction").asText()).isEqualTo("CREDIT");
     }
 
     @Test
