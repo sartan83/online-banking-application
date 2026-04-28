@@ -12,6 +12,8 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
     List<Account> findByOwnerUsername(String username);
 
+    List<Account> findByOwnerId(Long ownerId);
+
     /**
      * Row-locking read used inside transfer transactions to prevent the lost-update race:
      * two concurrent transfers from the same account can otherwise both pass the sufficient-funds

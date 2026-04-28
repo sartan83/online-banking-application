@@ -36,6 +36,10 @@ public class Account {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal balance = BigDecimal.ZERO;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private AccountStatus status = AccountStatus.ACTIVE;
+
     @Column(nullable = false, length = 3)
     private String currency = "USD";
 
@@ -55,6 +59,8 @@ public class Account {
     public void setAccountType(AccountType accountType) { this.accountType = accountType; }
     public BigDecimal getBalance() { return balance; }
     public void setBalance(BigDecimal balance) { this.balance = balance; }
+    public AccountStatus getStatus() { return status; }
+    public void setStatus(AccountStatus status) { this.status = status; }
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
