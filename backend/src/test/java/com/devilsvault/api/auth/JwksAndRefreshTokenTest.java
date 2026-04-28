@@ -41,12 +41,18 @@ class JwksAndRefreshTokenTest {
     @Autowired PasswordEncoder encoder;
     @Autowired ObjectMapper mapper;
     @Autowired JwtService jwtService;
+    @Autowired LoginRateLimiter rateLimiter;
 
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(wac).addFilter(springSecurityFilterChain).build();
+        // The rate-limiter is a singleton across @SpringBootTest classes, so prior
+        // test classes that exercised /api/auth/login may have drained the
+        // per-IP bucket for 127.0.0.1. Reset before each test so legitimate
+        // logins inside this class never bounce off a stale 429.
+        rateLimiter.resetAll();
     }
 
     private JsonNode loginUser(String username, String password) throws Exception {

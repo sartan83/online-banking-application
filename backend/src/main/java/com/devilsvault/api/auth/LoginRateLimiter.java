@@ -85,6 +85,19 @@ public class LoginRateLimiter {
         userBuckets.invalidate(username);
     }
 
+    /**
+     * Clear every per-user and per-IP bucket. Intended for two operational
+     * use cases: incident response (an admin needs to lift a global lockout
+     * caused by a misconfigured upstream proxy) and integration tests that
+     * share a Spring application context across @SpringBootTest classes —
+     * in tests the singleton caches would otherwise leak attempts between
+     * unrelated test classes.
+     */
+    public void resetAll() {
+        userBuckets.invalidateAll();
+        ipBuckets.invalidateAll();
+    }
+
     private static Bucket newBucket(int capacity) {
         Bandwidth limit = Bandwidth.builder()
                 .capacity(capacity)
