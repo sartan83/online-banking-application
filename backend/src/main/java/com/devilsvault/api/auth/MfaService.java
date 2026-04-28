@@ -40,9 +40,11 @@ public class MfaService {
     }
 
     public String buildOtpAuthUrl(String username, String base32Secret) {
-        return "otpauth://totp/" + TOTP_ISSUER + ":" + username
+        String encodedUsername = java.net.URLEncoder.encode(username, StandardCharsets.UTF_8);
+        String encodedIssuer = java.net.URLEncoder.encode(TOTP_ISSUER, StandardCharsets.UTF_8);
+        return "otpauth://totp/" + encodedIssuer + ":" + encodedUsername
                 + "?secret=" + base32Secret
-                + "&issuer=" + TOTP_ISSUER
+                + "&issuer=" + encodedIssuer
                 + "&algorithm=SHA1&digits=" + TOTP_DIGITS
                 + "&period=" + TOTP_STEP.getSeconds();
     }

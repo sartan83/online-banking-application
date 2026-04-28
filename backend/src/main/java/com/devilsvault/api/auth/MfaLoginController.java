@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.Map;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class MfaLoginController {
     private final MfaService mfaService;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final LoginRateLimiter rateLimiter;
     private final AuditEventService audit;
 
     public MfaLoginController(
@@ -37,11 +39,13 @@ public class MfaLoginController {
             MfaService mfaService,
             JwtService jwtService,
             RefreshTokenService refreshTokenService,
+            LoginRateLimiter rateLimiter,
             AuditEventService audit) {
         this.users = users;
         this.mfaService = mfaService;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
+        this.rateLimiter = rateLimiter;
         this.audit = audit;
     }
 
@@ -65,6 +69,15 @@ public class MfaLoginController {
         }
 
         String username = claims.getSubject();
+        String ip = clientIp(httpReq);
+        LoginRateLimiter.Decision decision = rateLimiter.tryAcquire(username, ip);
+        if (!decision.allowed()) {
+            long retryAfterSeconds = Math.max(1L, decision.retryAfter().toSeconds());
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds))
+                    .build();
+        }
+
         User user = users.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
 
@@ -95,7 +108,14 @@ public class MfaLoginController {
         audit.recordOnCommit(AuditEventType.MFA_LOGIN_SUCCESS, AuditOutcome.SUCCESS,
                 username, RESOURCE_TYPE_USER, String.valueOf(user.getId()), Map.of());
 
+        rateLimiter.onSuccessfulLogin(username);
+
         return ResponseEntity.ok(new AuthController.LoginResponse(
                 pair.accessToken(), pair.refreshToken(), pair.expiresIn(), null, null));
+    }
+
+    private static String clientIp(HttpServletRequest req) {
+        String addr = req.getRemoteAddr();
+        return addr == null ? "unknown" : addr;
     }
 }
