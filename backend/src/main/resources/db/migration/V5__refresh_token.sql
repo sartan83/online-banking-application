@@ -1,6 +1,6 @@
 CREATE TABLE refresh_token (
     id             BIGSERIAL       PRIMARY KEY,
-    user_id        BIGINT          NOT NULL REFERENCES app_user(id),
+    user_id        BIGINT          NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
     token_hash     VARCHAR(255)    NOT NULL,
     created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     expires_at     TIMESTAMP WITH TIME ZONE NOT NULL,
