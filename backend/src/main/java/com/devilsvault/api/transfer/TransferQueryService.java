@@ -39,8 +39,9 @@ public class TransferQueryService {
         }
 
         int clampedSize = Math.min(Math.max(size, 1), 100);
+        int clampedPage = Math.max(page, 0);
         Page<Transfer> result = transfers.findVisibleTransfers(
-                username, accountId, since, until, PageRequest.of(page, clampedSize));
+                username, accountId, since, until, PageRequest.of(clampedPage, clampedSize));
 
         Set<Long> ownedAccountIds = accounts.findByOwnerUsername(username).stream()
                 .map(Account::getId)
