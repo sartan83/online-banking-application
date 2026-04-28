@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.devilsvault.api.user.Role;
 import com.devilsvault.api.user.User;
 import com.devilsvault.api.user.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -43,6 +44,14 @@ class LoginRateLimitIntegrationTest {
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(wac).addFilter(springSecurityFilterChain).build();
+    }
+
+    @BeforeEach
+    void resetRateLimiter() {
+        // Clear both per-user and per-IP buckets so a prior @SpringBootTest
+        // class that drained the IP bucket for 127.0.0.1 doesn't make this
+        // test's expected 401 responses come back as 429.
+        rateLimiter.resetAll();
     }
 
     private void seedUser(String username) {
