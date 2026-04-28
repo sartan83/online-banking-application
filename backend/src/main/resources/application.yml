@@ -17,6 +17,9 @@ spring:
     enabled: true
     baseline-on-migrate: true
 
+app.encryption:
+  key: ${DB_ENCRYPTION_KEY:}
+
 server:
   port: ${SERVER_PORT:8080}
   error:

@@ -11,4 +11,5 @@ Digital Operational Resilience Act (DORA).
 | Art. 24 | ICT resilience testing — DAST | **Partial** | OWASP ZAP baseline scan runs in CI on every PR (`.github/workflows/dast.yml`). Fails on HIGH-severity findings. Full authenticated scan and annual pen-test still required. |
 | Art. 25 | TLPT (threat-led penetration testing) | Planned | Requires external red-team engagement |
 | Art. 28 | ICT third-party risk | **Partial** | CycloneDX SBOMs, Trivy, and OSV-Scanner gates in `supply-chain.yml` |
+| Annex I | Encryption of personal data at rest | **Partial** | Application-level AES-256-GCM on `users.email` via JPA `AttributeConverter`; deterministic SHA-256 hash for lookup. pgcrypto extension enabled. Broader rollout to other PII columns planned. See `docs/dora/key-management.md`. |
 | Art. 45 | Information sharing | Planned | — |

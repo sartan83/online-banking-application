@@ -10,9 +10,8 @@ import org.springframework.data.repository.query.Param;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
     boolean existsByUsername(String username);
-    boolean existsByEmail(String email);
+    boolean existsByEmailSearchHash(String emailSearchHash);
 
-    @Query("SELECT u FROM User u WHERE LOWER(u.username) LIKE LOWER(CONCAT('%', :q, '%')) "
-            + "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%'))")
+    @Query("SELECT u FROM User u WHERE LOWER(u.username) LIKE LOWER(CONCAT('%', :q, '%'))")
     Page<User> searchByUsernameOrEmail(@Param("q") String q, Pageable pageable);
 }
