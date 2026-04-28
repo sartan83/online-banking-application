@@ -54,6 +54,18 @@ if [[ ! -d "${WAL_ARCHIVE_DIR}" ]]; then
   exit 1
 fi
 
+# ---------- input sanitisation ----------
+# Prevent injection into postgresql.auto.conf via crafted inputs.
+if [[ "${TARGET_TIME}" =~ [\'] ]] || [[ "${TARGET_TIME}" == *$'\n'* ]]; then
+  echo "ERROR: TARGET_TIME contains invalid characters (single quotes or newlines)." >&2
+  exit 1
+fi
+
+if [[ "${WAL_ARCHIVE_DIR}" =~ [\'] ]] || [[ "${WAL_ARCHIVE_DIR}" == *$'\n'* ]]; then
+  echo "ERROR: WAL_ARCHIVE_DIR contains invalid characters (single quotes or newlines)." >&2
+  exit 1
+fi
+
 # ---------- prepare data directory ----------
 if [[ -d "${DATA_DIR}" ]]; then
   echo "WARNING: ${DATA_DIR} already exists — aborting to prevent data loss." >&2

@@ -39,6 +39,7 @@ jobs:
       PGDATABASE: drilltest
       BACKUP_DIR: /tmp/pg_backups
       WAL_ARCHIVE_DIR: /tmp/wal_archive
+      PG_VERSION: ${{ github.event.inputs.pg_version || '16' }}
 
     steps:
       - name: Checkout
@@ -171,7 +172,7 @@ jobs:
         run: |
           echo "## Restore Drill Results" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **PostgreSQL version**: ${{ github.event.inputs.pg_version || '16' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **PostgreSQL version**: ${PG_VERSION}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Backup file**: ${BACKUP_FILE}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Archive integrity**: PASS" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Data verification**: PASS" >> "$GITHUB_STEP_SUMMARY"
