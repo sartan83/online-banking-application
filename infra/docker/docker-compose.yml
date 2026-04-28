@@ -1,6 +1,20 @@
 services:
   postgres:
     image: postgres:16-alpine@sha256:4e6e670bb069649261c9c18031f0aded7bb249a5b6664ddec29c013a89310d50
+    # The entrypoint runs as root initially, so we chown the WAL archive
+    # directory before exec-ing the original entrypoint which drops to the
+    # postgres user. Without this, the named volume is root-owned and
+    # archive_command fails with "Permission denied".
+    entrypoint:
+      - "sh"
+      - "-c"
+      - |
+        install -d -o postgres -g postgres /var/lib/postgresql/wal_archive
+        exec docker-entrypoint.sh postgres \
+          -c wal_level=replica \
+          -c archive_mode=on \
+          -c "archive_command=cp %p /var/lib/postgresql/wal_archive/%f" \
+          -c archive_timeout=300
     environment:
       POSTGRES_DB: devilsvault
       POSTGRES_USER: devilsvault
@@ -9,6 +23,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - wal_archive:/var/lib/postgresql/wal_archive
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U devilsvault"]
       interval: 5s
@@ -58,3 +73,4 @@ services:
 
 volumes:
   pgdata:
+  wal_archive:
