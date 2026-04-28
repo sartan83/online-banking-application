@@ -1,0 +1,44 @@
+# ZAP baseline-scan rule overrides for DevilsVault
+# Format: <rule-id>\t<action>\t<name>
+# Actions: IGNORE = suppress entirely, WARN = report but don't fail
+#
+# Downgrades below are for known noise in a dev/SPA context:
+#
+# 10038 – Content Security Policy (CSP) Header Not Set
+#   The SPA is served by nginx-unprivileged with default headers.
+#   CSP will be added in a future hardening pass; not a high-severity risk.
+10038	WARN	Content Security Policy (CSP) Header Not Set
+# 10020 – X-Frame-Options Header Not Set / Multiple X-Frame-Options Header Entries
+#   Spring Security sets X-Frame-Options: DENY for API responses. The nginx
+#   frontend container does not set it yet; this is a MEDIUM at most and
+#   planned for a follow-up config change.
+10020	WARN	X-Frame-Options Header
+# 10021 – X-Content-Type-Options Header Missing
+#   The nginx frontend doesn't set X-Content-Type-Options: nosniff by default.
+#   This is informational for static assets served with correct MIME types.
+10021	WARN	X-Content-Type-Options Header Missing
+# 10036 – Server Leaks Version Information via "Server" HTTP Response Header Field
+#   nginx-unprivileged leaks "nginx/<version>" by default. Cosmetic; will be
+#   suppressed via server_tokens off in a follow-up.
+10036	WARN	Server Leaks Version Information
+# 10037 – Server Leaks Information via "X-Powered-By" HTTP Response Header Field(s)
+#   Spring Boot may expose X-Powered-By; this is informational only.
+10037	WARN	Server Leaks Information via X-Powered-By
+# 10049 – Storable and Cacheable Content
+#   ZAP flags cacheable responses from the SPA; expected behaviour for
+#   static assets behind nginx.
+10049	WARN	Storable and Cacheable Content
+# 10054 – Cookie without SameSite Attribute
+#   XSRF-TOKEN cookie is issued by Spring Security with SameSite=Lax via
+#   CookieCsrfTokenRepository. ZAP sometimes flags cookies it cannot
+#   attribute; downgrade to WARN.
+10054	WARN	Cookie without SameSite Attribute
+# 10055 – CSP: Wildcard Directive
+#   Related to 10038; no CSP header is set yet so ZAP infers a wildcard.
+10055	WARN	CSP: Wildcard Directive
+# 10098 – Cross-Domain Misconfiguration
+#   CORS is intentionally configured for the SPA origin in SecurityConfig.
+10098	WARN	Cross-Domain Misconfiguration
+# 10109 – Modern Web Application
+#   Informational alert that the target is an SPA; not a security finding.
+10109	WARN	Modern Web Application

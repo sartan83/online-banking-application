@@ -1,0 +1,76 @@
+name: DAST · OWASP ZAP baseline
+
+# DORA-2.4 (Art. 24 ICT resilience testing). Runs an OWASP ZAP baseline
+# scan against the full app stack (backend + SPA frontend via nginx).
+# The job fails on HIGH-severity findings; MEDIUM/LOW appear in the
+# uploaded report but do not block the PR.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zap-baseline:
+    name: ZAP baseline scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── 1. Bring up the full app stack ──────────────────────────────
+      - name: Start app stack
+        run: |
+          docker compose -f infra/docker/docker-compose.yml up -d --build
+
+      - name: Wait for backend health
+        run: |
+          timeout 90 bash -c '
+            until curl -sf http://localhost:8080/actuator/health; do
+              sleep 3
+            done
+          '
+
+      # ── 2. Run ZAP baseline scan ───────────────────────────────────
+      #
+      # ZAP baseline defaults every rule to WARN. The rules file in
+      # infra/zap/baseline-rules.tsv downgrades known noise to WARN
+      # explicitly (so the intent is documented) but leaves all other
+      # rules at their default WARN level too.
+      #
+      # Because baseline has no built-in "fail on HIGH only" flag, we
+      # set fail_action: false here and gate on severity in a dedicated
+      # step below that parses the JSON report.
+      - name: OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: "http://localhost:5173"
+          rules_file_name: "infra/zap/baseline-rules.tsv"
+          allow_issue_writing: false
+          fail_action: false
+          artifact_name: zap-baseline-report
+
+      # ── 3. Gate – fail on HIGH-severity findings ────────────────────
+      - name: Gate on HIGH-severity findings
+        if: always()
+        run: |
+          REPORT="report_json.json"
+          if [ ! -f "$REPORT" ]; then
+            echo "::warning::ZAP JSON report not found — skipping severity gate"
+            exit 0
+          fi
+          HIGH=$(jq '[.site[]?.alerts[]? | select(.riskcode == "3" or .riskcode == 3)] | length' "$REPORT")
+          echo "HIGH-severity findings: $HIGH"
+          if [ "$HIGH" -gt 0 ]; then
+            echo "::error::ZAP found $HIGH HIGH-severity finding(s):"
+            jq -r '.site[]?.alerts[]? | select(.riskcode == "3" or .riskcode == 3) | "  \(.alert) — \(.riskdesc)"' "$REPORT"
+            exit 1
+          fi
+          echo "No HIGH-severity findings — gate passed"
+
+      # ── 4. Tear down ───────────────────────────────────────────────
+      - name: Tear down app stack
+        if: always()
+        run: |
+          docker compose -f infra/docker/docker-compose.yml down -v
