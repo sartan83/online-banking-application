@@ -54,7 +54,7 @@ public class AdminService {
 
     @Transactional
     public AdminAccountDto freezeAccount(Long accountId, String adminUsername) {
-        Account account = accounts.findById(accountId)
+        Account account = accounts.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is not active");
@@ -68,7 +68,7 @@ public class AdminService {
 
     @Transactional
     public AdminAccountDto unfreezeAccount(Long accountId, String adminUsername) {
-        Account account = accounts.findById(accountId)
+        Account account = accounts.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
         if (account.getStatus() != AccountStatus.FROZEN) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is not frozen");
