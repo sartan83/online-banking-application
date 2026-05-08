@@ -6,7 +6,7 @@ Modernization of the original CSE545 Secure Banking System. The legacy Spring MV
 
 | Layer     | Tech |
 |-----------|------|
-| Backend   | Spring Boot 3.3, Java 17, Spring Security 6 (JWT, stateless), Spring Data JPA, Flyway, HikariCP, springdoc-openapi |
+| Backend   | Spring Boot 3.3, Java 21, Spring Security 6 (JWT, stateless), Spring Data JPA, Flyway, HikariCP, springdoc-openapi |
 | Frontend  | Vite + React 18 + TypeScript, Tailwind CSS, TanStack Query, React Router, Axios |
 | Database  | PostgreSQL 16 |
 | Infra     | Docker Compose (Postgres + Redis + MailHog + backend + frontend) |
@@ -42,7 +42,7 @@ Then:
 
 ### Local dev without Docker
 
-Backend (requires Java 17 + Maven, Postgres reachable at `jdbc:postgresql://localhost:5432/devilsvault`):
+Backend (requires Java 21 + Maven, Postgres reachable at `jdbc:postgresql://localhost:5432/devilsvault`):
 
 ```bash
 cd backend
