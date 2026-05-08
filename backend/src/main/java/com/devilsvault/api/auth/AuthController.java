@@ -2,6 +2,7 @@ package com.devilsvault.api.auth;
 
 import com.devilsvault.api.user.Role;
 import com.devilsvault.api.user.User;
+import com.devilsvault.api.user.UserAuthenticationService;
 import com.devilsvault.api.user.UserRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -23,11 +24,16 @@ public class AuthController {
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final JwtService jwt;
+    private final UserAuthenticationService loginLimiter;
 
-    public AuthController(UserRepository users, PasswordEncoder encoder, JwtService jwt) {
+    public AuthController(UserRepository users,
+                          PasswordEncoder encoder,
+                          JwtService jwt,
+                          UserAuthenticationService loginLimiter) {
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
+        this.loginLimiter = loginLimiter;
     }
 
     public record RegisterRequest(
@@ -81,9 +87,14 @@ public class AuthController {
         User u = users.findByUsername(req.username()).orElse(null);
         String hash = u != null ? u.getPasswordHash() : DUMMY_HASH;
         boolean passwordOk = encoder.matches(req.password(), hash);
-        if (u == null || !u.isEnabled() || !passwordOk) {
+        boolean accountUsable = u != null && u.isEnabled();
+        if (u == null || !accountUsable || !passwordOk) {
+            if (u != null) {
+                loginLimiter.recordFailure(u.getUsername());
+            }
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
+        loginLimiter.recordSuccess(u.getUsername());
         return new AuthResponse(jwt.issue(u.getUsername(), u.getRole().name()), u.getUsername(), u.getRole().name());
     }
 }

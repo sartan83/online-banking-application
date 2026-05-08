@@ -42,7 +42,9 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(csrfHandler)
                         .ignoringRequestMatchers(
                                 "/api/auth/register",
-                                "/api/auth/login"))
+                                "/api/auth/login",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password"))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**",
